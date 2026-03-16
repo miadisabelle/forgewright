@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  --forge-east: #F59E0B;
+  --forge-south: #EF4444;
+  --forge-west: #3B82F6;
+  --forge-north: #8B5CF6;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
