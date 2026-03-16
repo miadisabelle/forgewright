@@ -6,6 +6,11 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+    server: {
+      deps: {
+        external: ["kuzu"],
+      },
+    },
   },
   resolve: {
     alias: {
