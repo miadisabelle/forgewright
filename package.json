@@ -5,9 +5,9 @@
   "description": "Forgewright — graph-based agentic development platform with ceremony governance",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --port 3131",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3131",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "next lint",
