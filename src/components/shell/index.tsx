@@ -1,15 +1,8 @@
-// Forgewright shell component — see rispecs/00-platform-architecture.spec.md
-// Layer 5: Product Shell — Three-pane UI: Chat + Editor + Preview
+// ─── Forgewright Shell ──────────────────────────────────────────────────────
+// Layer 5: Product Shell — Three-pane UI with Medicine Wheel navigation
 
-export default function Shell() {
-  return (
-    <div className="flex h-screen w-full">
-      {/* Chat pane */}
-      <aside className="w-80 border-r border-neutral-800" />
-      {/* Editor pane */}
-      <main className="flex-1" />
-      {/* Preview pane */}
-      <aside className="w-96 border-l border-neutral-800" />
-    </div>
-  );
-}
+export { default as AppShell } from './AppShell';
+export { default as Toolbar, type ViewTab } from './Toolbar';
+export { default as StatusBar } from './StatusBar';
+export { default as ContextPanel } from './ContextPanel';
+export { default as ViewRouter } from './ViewRouter';
