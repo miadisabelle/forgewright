@@ -11,14 +11,14 @@ import {
   decompose,
   buildSystemPrompt,
   type DecomposeOptions,
-} from '@forgewright/lib/pde/decompose.js';
+} from '@forgewright/lib/pde/decompose';
 
-import { enrich, type GraphContext } from '@forgewright/lib/pde/enrich.js';
-import { assess } from '@forgewright/lib/pde/assess.js';
-import { plan } from '@forgewright/lib/pde/plan.js';
-import { renderMarkdown } from '@forgewright/lib/pde/storage.js';
-import { runPipeline, type PipelineEvent } from '@forgewright/lib/pde/pipeline.js';
-import { DIRECTION_NAMES, DIRECTIONS } from '@forgewright/lib/types/directions.js';
+import { enrich, type GraphContext } from '@forgewright/lib/pde/enrich';
+import { assess } from '@forgewright/lib/pde/assess';
+import { plan } from '@forgewright/lib/pde/plan';
+import { renderMarkdown } from '@forgewright/lib/pde/storage';
+import { runPipeline, type PipelineEvent } from '@forgewright/lib/pde/pipeline';
+import { DIRECTION_NAMES, DIRECTIONS } from '@forgewright/lib/types/directions';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

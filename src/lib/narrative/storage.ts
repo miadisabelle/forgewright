@@ -3,8 +3,8 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { NarrativeBeat, NarrativeArc } from '../types/narrative.js';
-import { NarrativeBeatSchema } from '../types/narrative.js';
+import type { NarrativeBeat, NarrativeArc } from '../types/narrative';
+import { NarrativeBeatSchema } from '../types/narrative';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 

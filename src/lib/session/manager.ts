@@ -6,17 +6,17 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { ForgewrightSession, ForgewrightConfig, SessionStatus } from '../types/session.js';
-import type { DirectionName } from '../types/directions.js';
-import * as storage from './storage.js';
+import type { ForgewrightSession, ForgewrightConfig, SessionStatus } from '../types/session';
+import type { DirectionName } from '../types/directions';
+import * as storage from './storage';
 import {
   onSessionCreate,
   onDirectionChange,
   onCycleComplete,
   onSessionClose,
   type LifecycleResult,
-} from './lifecycle.js';
-import { mergeConfig, DEFAULT_CONFIG, DEFAULT_CHECKPOINT_POLICY, SESSION_DEFAULTS } from './config.js';
+} from './lifecycle';
+import { mergeConfig, DEFAULT_CONFIG, DEFAULT_CHECKPOINT_POLICY, SESSION_DEFAULTS } from './config';
 
 // ─── SessionManager ──────────────────────────────────────────────────────────
 

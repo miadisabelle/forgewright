@@ -11,13 +11,13 @@
 import {
   tools as intentToMachineTools,
   handlers as intentToMachineHandlers,
-} from './intent-to-machine.js';
+} from './intent-to-machine';
 import {
   tools as sessionCycleTools,
   handlers as sessionCycleHandlers,
-} from './session-cycle.js';
-import type { ToolHandler, ToolResult } from '../guards.js';
-import type { ToolDefinition } from '../tools/sm.js';
+} from './session-cycle';
+import type { ToolHandler, ToolResult } from '../guards';
+import type { ToolDefinition } from '../tools/sm';
 import type { z } from 'zod';
 
 // ─── Aggregated Exports ──────────────────────────────────────────────────────

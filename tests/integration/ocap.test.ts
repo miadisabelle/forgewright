@@ -6,16 +6,16 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ForgewrightGraph, type OcapContext } from '@forgewright/lib/graph/database.js';
-import { neighborhood } from '@forgewright/lib/graph/queries.js';
+import { ForgewrightGraph, type OcapContext } from '@forgewright/lib/graph/database';
+import { neighborhood } from '@forgewright/lib/graph/queries';
 import {
   checkAccess,
   filterNodes,
   getAuditLog,
   clearAuditLog,
-} from '@forgewright/lib/graph/ocap-filter.js';
-import type { GraphNode, GraphEdge } from '@forgewright/lib/types/graph.js';
-import type { OcapMetadata } from '@forgewright/lib/types/ocap.js';
+} from '@forgewright/lib/graph/ocap-filter';
+import type { GraphNode, GraphEdge } from '@forgewright/lib/types/graph';
+import type { OcapMetadata } from '@forgewright/lib/types/ocap';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

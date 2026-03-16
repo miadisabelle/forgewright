@@ -83,7 +83,7 @@ vi.mock('@forgewright/lib/ceremony/runtime.js', () => ({
 
 // ─── Import server AFTER mocks ───────────────────────────────────────────────
 
-import { createForgewrightServer, registerNamespace } from '@forgewright/lib/mcp/server.js';
+import { createForgewrightServer, registerNamespace } from '@forgewright/lib/mcp/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 

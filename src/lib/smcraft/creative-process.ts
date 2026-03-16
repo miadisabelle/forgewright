@@ -17,8 +17,8 @@
  *       └── Integration
  */
 
-import type { StateMachineDefinition, StateDef, EventSourceDef, TransitionDef } from '../types/smdf.js';
-import { EVENT_IDS } from './events.js';
+import type { StateMachineDefinition, StateDef, EventSourceDef, TransitionDef } from '../types/smdf';
+import { EVENT_IDS } from './events';
 
 // ─── Guard condition expressions ─────────────────────────────────────────────
 

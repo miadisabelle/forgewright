@@ -1,10 +1,10 @@
 // ─── Arc Manager ─────────────────────────────────────────────────────────────
 // Manages narrative arcs across the Medicine Wheel cycle.
 
-import type { NarrativeArc, NarrativeBeat, ArcCompleteness } from '../types/narrative.js';
-import type { DirectionName } from '../types/directions.js';
-import { DIRECTION_NAMES, DIRECTIONS, DIRECTION_ACTS } from '../types/directions.js';
-import { computeWilsonScore, type WilsonContext } from './wilson-score.js';
+import type { NarrativeArc, NarrativeBeat, ArcCompleteness } from '../types/narrative';
+import type { DirectionName } from '../types/directions';
+import { DIRECTION_NAMES, DIRECTIONS, DIRECTION_ACTS } from '../types/directions';
+import { computeWilsonScore, type WilsonContext } from './wilson-score';
 
 // ─── Create a New Arc ────────────────────────────────────────────────────────
 

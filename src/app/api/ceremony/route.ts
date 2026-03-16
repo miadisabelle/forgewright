@@ -6,17 +6,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { CeremonyRuntime } from '@forgewright/lib/ceremony/runtime.js';
+import { CeremonyRuntime } from '@forgewright/lib/ceremony/runtime';
+import { getCeremonyRegistry } from './registry';
 
-// In-memory ceremony registry (keyed by ID).
-// Production would persist to Redis / graph, but for the REST surface
-// this singleton map is sufficient for session-scoped ceremonies.
-const ceremonies = new Map<string, CeremonyRuntime>();
-
-/** Exported for use by the [id] route. */
-export function getCeremonyRegistry() {
-  return ceremonies;
-}
+const ceremonies = getCeremonyRegistry();
 
 export async function POST(request: NextRequest) {
   try {

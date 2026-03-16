@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionManager } from '@forgewright/lib/session/manager.js';
+import { SessionManager } from '@forgewright/lib/session/manager';
 
 function getManager() {
   return new SessionManager();

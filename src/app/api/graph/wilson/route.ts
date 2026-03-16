@@ -14,8 +14,8 @@ import {
   computeUnifiedWilson,
   type UnifiedWilsonOptions,
   type SessionMetrics,
-} from '@forgewright/lib/wilson/index.js';
-import type { DirectionName } from '@forgewright/lib/types/directions.js';
+} from '@forgewright/lib/wilson/index';
+import type { DirectionName } from '@forgewright/lib/types/directions';
 
 const VALID_DIRECTIONS = new Set<string>(['east', 'south', 'west', 'north']);
 

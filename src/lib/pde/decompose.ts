@@ -10,7 +10,7 @@ import {
   DIRECTIONS,
   DIRECTION_NAMES,
   type DirectionName,
-} from '../types/directions.js';
+} from '../types/directions';
 import type {
   OntologicalDecomposition,
   OntologicalDirection,
@@ -20,8 +20,8 @@ import type {
   AmbiguityFlag,
   ContextRequirements,
   ExpectedOutputs,
-} from '../types/pde.js';
-import type { RelationalIntent } from '../types/pde.js';
+} from '../types/pde';
+import type { RelationalIntent } from '../types/pde';
 
 // ─── Keyword dictionaries ────────────────────────────────────────────────────
 

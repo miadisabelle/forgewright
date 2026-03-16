@@ -13,7 +13,7 @@ import { mkdirSync } from 'fs';
 import type {
   GraphNode, GraphEdge, NodeType, EdgeType,
   OcapMetadata,
-} from '../types/index.js';
+} from '../types/index';
 
 // ─── OcapContext (graph-level concern) ───────────────────────────────────────
 

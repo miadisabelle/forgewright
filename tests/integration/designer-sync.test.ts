@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DesignerSync, type SyncConflict } from '@forgewright/lib/designer/sync.js';
-import type { ToolResult } from '@forgewright/lib/mcp/guards.js';
+import { DesignerSync, type SyncConflict } from '@forgewright/lib/designer/sync';
+import type { ToolResult } from '@forgewright/lib/mcp/guards';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

@@ -6,7 +6,7 @@
  * is responsible for serialisation if needed.
  */
 
-import type { WilsonScore } from '../types/narrative.js';
+import type { WilsonScore } from '../types/narrative';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

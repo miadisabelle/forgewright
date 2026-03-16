@@ -6,8 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { runPipeline, list } from '@forgewright/lib/pde/index.js';
-import type { PipelineOptions } from '@forgewright/lib/pde/pipeline.js';
+import { runPipeline, list } from '@forgewright/lib/pde/index';
+import type { PipelineOptions } from '@forgewright/lib/pde/pipeline';
 
 export async function GET(request: NextRequest) {
   try {

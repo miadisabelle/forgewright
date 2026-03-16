@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ForgewrightGraph, type OcapContext } from '@forgewright/lib/graph/database.js';
-import { computeWilsonAlignment, type WilsonAlignmentScore } from '@forgewright/lib/graph/wilson.js';
-import type { OcapMetadata } from '@forgewright/lib/types/ocap.js';
+import { ForgewrightGraph, type OcapContext } from '@forgewright/lib/graph/database';
+import { computeWilsonAlignment, type WilsonAlignmentScore } from '@forgewright/lib/graph/wilson';
+import type { OcapMetadata } from '@forgewright/lib/types/ocap';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

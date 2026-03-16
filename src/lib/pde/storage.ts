@@ -11,13 +11,13 @@ import {
   DIRECTIONS,
   DIRECTION_NAMES,
   type DirectionName,
-} from '../types/directions.js';
+} from '../types/directions';
 import type {
   OntologicalDecomposition,
   StructuredPlan,
   PdeActionItem,
-} from '../types/pde.js';
-import type { StateMachineDefinition } from '../types/smdf.js';
+} from '../types/pde';
+import type { StateMachineDefinition } from '../types/smdf';
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 

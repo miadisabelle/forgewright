@@ -11,15 +11,15 @@
  * Sync: bidirectional sync when either representation is edited.
  */
 
-import type { StructuralTensionChart, ActionStep, CreativePhase } from '../types/stc.js';
+import type { StructuralTensionChart, ActionStep, CreativePhase } from '../types/stc';
 import type {
   StateMachineDefinition,
   StateDef,
   TransitionDef,
   EventSourceDef,
-} from '../types/smdf.js';
-import { EVENT_IDS } from './events.js';
-import { createCreativeProcessMachine, stateToPhase } from './creative-process.js';
+} from '../types/smdf';
+import { EVENT_IDS } from './events';
+import { createCreativeProcessMachine, stateToPhase } from './creative-process';
 
 // ─── Phase → Composite State Mapping ─────────────────────────────────────────
 

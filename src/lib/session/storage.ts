@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile, readdir, unlink, rename } from 'fs/promises
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import { randomUUID } from 'crypto';
-import { ForgewrightSessionSchema, type ForgewrightSession } from '../types/session.js';
+import { ForgewrightSessionSchema, type ForgewrightSession } from '../types/session';
 
 // ─── Storage Path ────────────────────────────────────────────────────────────
 

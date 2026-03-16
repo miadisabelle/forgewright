@@ -11,14 +11,14 @@ import {
   DIRECTION_NAMES,
   DIRECTION_ACTS,
   type DirectionName,
-} from '../types/directions.js';
+} from '../types/directions';
 import type {
   OntologicalDecomposition,
   PdeActionItem,
   StructuredPlan,
-} from '../types/pde.js';
-import type { NarrativeBeat } from '../types/narrative.js';
-import type { StateMachineDefinition, StateDef, TransitionDef } from '../types/smdf.js';
+} from '../types/pde';
+import type { NarrativeBeat } from '../types/narrative';
+import type { StateMachineDefinition, StateDef, TransitionDef } from '../types/smdf';
 
 // ─── Main plan function ──────────────────────────────────────────────────────
 

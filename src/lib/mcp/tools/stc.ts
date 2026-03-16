@@ -12,9 +12,9 @@
 
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import type { StructuralTensionChart, ActionStep } from '../../types/stc.js';
-import type { DirectionName } from '../../types/directions.js';
-import { DIRECTION_NAMES } from '../../types/directions.js';
+import type { StructuralTensionChart, ActionStep } from '../../types/stc';
+import type { DirectionName } from '../../types/directions';
+import { DIRECTION_NAMES } from '../../types/directions';
 import {
   withGuards,
   requireOcap,
@@ -24,8 +24,8 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
-import type { ToolDefinition } from './sm.js';
+} from '../guards';
+import type { ToolDefinition } from './sm';
 
 // ─── Session-scoped chart store ──────────────────────────────────────────────
 

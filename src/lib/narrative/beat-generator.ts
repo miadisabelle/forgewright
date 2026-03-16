@@ -1,11 +1,11 @@
 // ─── Beat Generator ──────────────────────────────────────────────────────────
 // Maps action step completion to narrative beats within the Medicine Wheel.
 
-import type { ActionStep } from '../types/stc.js';
-import type { NarrativeBeat } from '../types/narrative.js';
-import type { DirectionName } from '../types/directions.js';
-import { DIRECTIONS, DIRECTION_ACTS } from '../types/directions.js';
-import { computeWilsonScore, type WilsonContext } from './wilson-score.js';
+import type { ActionStep } from '../types/stc';
+import type { NarrativeBeat } from '../types/narrative';
+import type { DirectionName } from '../types/directions';
+import { DIRECTIONS, DIRECTION_ACTS } from '../types/directions';
+import { computeWilsonScore, type WilsonContext } from './wilson-score';
 
 // ─── Beat Context ────────────────────────────────────────────────────────────
 

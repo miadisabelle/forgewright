@@ -10,28 +10,28 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { SpiralTracker } from '@forgewright/lib/agent/spiral-tracker.js';
-import { detectSessionOscillation } from '@forgewright/lib/agent/oscillation-detector.js';
-import { generateBeat, type BeatContext } from '@forgewright/lib/narrative/beat-generator.js';
+import { SpiralTracker } from '@forgewright/lib/agent/spiral-tracker';
+import { detectSessionOscillation } from '@forgewright/lib/agent/oscillation-detector';
+import { generateBeat, type BeatContext } from '@forgewright/lib/narrative/beat-generator';
 import {
   createArc,
   addBeat,
   validateArcCoherence,
   getArcCompleteness,
-} from '@forgewright/lib/narrative/arc-manager.js';
+} from '@forgewright/lib/narrative/arc-manager';
 import {
   computeWilsonScore,
   getWilsonRecommendation,
   type WilsonContext,
-} from '@forgewright/lib/narrative/wilson-score.js';
+} from '@forgewright/lib/narrative/wilson-score';
 import {
   computeUnifiedWilson,
   type SessionMetrics,
-} from '@forgewright/lib/wilson/score.js';
-import { WilsonTracker } from '@forgewright/lib/wilson/tracker.js';
-import type { DirectionName } from '@forgewright/lib/types/directions.js';
-import type { ActionStep } from '@forgewright/lib/types/stc.js';
-import type { DirectionEntry } from '@forgewright/lib/agent/spiral-tracker.js';
+} from '@forgewright/lib/wilson/score';
+import { WilsonTracker } from '@forgewright/lib/wilson/tracker';
+import type { DirectionName } from '@forgewright/lib/types/directions';
+import type { ActionStep } from '@forgewright/lib/types/stc';
+import type { DirectionEntry } from '@forgewright/lib/agent/spiral-tracker';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

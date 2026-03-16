@@ -12,9 +12,9 @@
  * Both detectors share OscillationSeverity for consistent escalation.
  */
 
-import type { DirectionName } from '../types/directions.js';
-import type { OscillationSeverity } from '../smcraft/oscillation.js';
-import type { DirectionEntry } from './spiral-tracker.js';
+import type { DirectionName } from '../types/directions';
+import type { OscillationSeverity } from '../smcraft/oscillation';
+import type { DirectionEntry } from './spiral-tracker';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

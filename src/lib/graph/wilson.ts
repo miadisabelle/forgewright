@@ -10,8 +10,8 @@
  * Score > 0.7 → aligned
  */
 
-import type { NodeType, EdgeType } from '../types/index.js';
-import { ForgewrightGraph, type OcapContext } from './database.js';
+import type { NodeType, EdgeType } from '../types/index';
+import { ForgewrightGraph, type OcapContext } from './database';
 
 // ─── Wilson Score ────────────────────────────────────────────────────────────
 

@@ -11,9 +11,9 @@
  * Phase transitions are sequential and require consent — never automatic.
  */
 
-import type { CeremonyPhase, PhasePermissions } from '../types/ceremony.js';
-import type { DirectionName } from '../types/directions.js';
-import { PHASE_ORDER } from '../types/ceremony.js';
+import type { CeremonyPhase, PhasePermissions } from '../types/ceremony';
+import type { DirectionName } from '../types/directions';
+import { PHASE_ORDER } from '../types/ceremony';
 
 // ─── Phase ↔ Direction Alignment ─────────────────────────────────────────────
 

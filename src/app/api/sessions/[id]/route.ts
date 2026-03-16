@@ -7,8 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionManager } from '@forgewright/lib/session/manager.js';
-import type { DirectionName } from '@forgewright/lib/types/directions.js';
+import { SessionManager } from '@forgewright/lib/session/manager';
+import type { DirectionName } from '@forgewright/lib/types/directions';
 
 type RouteContext = { params: Promise<{ id: string }> };
 

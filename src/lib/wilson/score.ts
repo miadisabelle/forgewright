@@ -18,9 +18,9 @@
  * the full weight proportionally and confidence is reduced.
  */
 
-import type { WilsonScore } from '../types/narrative.js';
-import type { DirectionName } from '../types/directions.js';
-import { DIRECTION_NAMES } from '../types/directions.js';
+import type { WilsonScore } from '../types/narrative';
+import type { DirectionName } from '../types/directions';
+import { DIRECTION_NAMES } from '../types/directions';
 
 // ─── Session Metrics ─────────────────────────────────────────────────────────
 

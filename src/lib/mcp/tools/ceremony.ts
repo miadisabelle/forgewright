@@ -12,8 +12,8 @@
  */
 
 import { z } from 'zod';
-import { CeremonyRuntime } from '../../ceremony/runtime.js';
-import type { CeremonyPhase } from '../../types/ceremony.js';
+import { CeremonyRuntime } from '../../ceremony/runtime';
+import type { CeremonyPhase } from '../../types/ceremony';
 import {
   withGuards,
   requirePhase,
@@ -23,8 +23,8 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
-import type { ToolDefinition } from './sm.js';
+} from '../guards';
+import type { ToolDefinition } from './sm';
 
 // ─── Session-scoped ceremony store ───────────────────────────────────────────
 

@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ToolResult, ToolContext } from '@forgewright/lib/mcp/guards.js';
+import type { ToolResult, ToolContext } from '@forgewright/lib/mcp/guards';
 
 // ─── Mock filesystem ─────────────────────────────────────────────────────────
 

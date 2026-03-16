@@ -18,9 +18,9 @@ export {
   type PhaseDefinition,
   type DirectionAlignment,
   type PhaseTransitionResult,
-} from './phases.js';
+} from './phases';
 
-export { CeremonyRuntime } from './runtime.js';
+export { CeremonyRuntime } from './runtime';
 
 export {
   createOcapGuard,
@@ -29,7 +29,7 @@ export {
   type GuardDecision,
   type GuardCheck,
   type GuardAuditEntry,
-} from './ocap-guard.js';
+} from './ocap-guard';
 
 export {
   mapPhaseToDirection,
@@ -39,10 +39,10 @@ export {
   isBalanced,
   type SpiralPosition,
   type BalanceResult,
-} from './medicine-wheel.js';
+} from './medicine-wheel';
 
 export {
   ConsentManager,
   type ConsentRequest,
   type ConsentAuditEntry,
-} from './consent.js';
+} from './consent';

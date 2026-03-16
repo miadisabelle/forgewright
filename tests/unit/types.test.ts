@@ -76,7 +76,7 @@ import {
   // Session
   ForgewrightSessionSchema,
   SpiralPositionSchema,
-} from '@forgewright/lib/types/index.js';
+} from '@forgewright/lib/types/index';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

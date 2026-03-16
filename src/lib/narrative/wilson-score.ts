@@ -2,9 +2,9 @@
 // Implements Shawn Wilson's relational accountability as a computable metric.
 // Three pillars: Respect, Reciprocity, Responsibility.
 
-import type { NarrativeBeat, WilsonScore } from '../types/narrative.js';
-import type { DirectionName } from '../types/directions.js';
-import { DIRECTION_NAMES } from '../types/directions.js';
+import type { NarrativeBeat, WilsonScore } from '../types/narrative';
+import type { DirectionName } from '../types/directions';
+import { DIRECTION_NAMES } from '../types/directions';
 
 // ─── Context for Wilson Computation ──────────────────────────────────────────
 

@@ -13,22 +13,22 @@
  */
 
 import { z } from 'zod';
-import { stcToSMDF } from '../../smcraft/stc-adapter.js';
+import { stcToSMDF } from '../../smcraft/stc-adapter';
 import {
   createMachine,
   fireEvent,
   getMachine,
   type MachineInstance,
   type TransitionResult,
-} from '../../smcraft/runtime-bridge.js';
-import { generateCode, type CodegenLanguage } from '../../smcraft/codegen-bridge.js';
+} from '../../smcraft/runtime-bridge';
+import { generateCode, type CodegenLanguage } from '../../smcraft/codegen-bridge';
 import {
   StateMachineDefinitionSchema,
   type StateMachineDefinition,
   type StateDef,
   type TransitionDef,
-} from '../../types/smdf.js';
-import { StructuralTensionChartSchema } from '../../types/stc.js';
+} from '../../types/smdf';
+import { StructuralTensionChartSchema } from '../../types/stc';
 import {
   withGuards,
   requirePhase,
@@ -39,7 +39,7 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
+} from '../guards';
 
 // ─── Session-scoped machine store ────────────────────────────────────────────
 // Maps session-local IDs to runtime machine instances.

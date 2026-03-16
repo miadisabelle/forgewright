@@ -14,7 +14,7 @@ export {
   type IGraphStore,
   type OcapContext,
   type SubgraphResult,
-} from './database.js';
+} from './database';
 
 // Query operations
 export {
@@ -26,7 +26,7 @@ export {
   queryCypher,
   type AccountabilityChain,
   type OscillationResult,
-} from './queries.js';
+} from './queries';
 
 // OCAP enforcement
 export {
@@ -38,7 +38,7 @@ export {
   getAuditLog,
   clearAuditLog,
   type AuditEntry,
-} from './ocap-filter.js';
+} from './ocap-filter';
 
 // Ingest (write path)
 export {
@@ -48,14 +48,14 @@ export {
   ingestNarrativeBeat,
   ingestKinship,
   type KinshipEntry,
-} from './ingest.js';
+} from './ingest';
 
 // Wilson alignment scoring
 export {
   computeWilsonAlignment,
   type WilsonAlignmentScore,
   type WilsonScope,
-} from './wilson.js';
+} from './wilson';
 
 // Export functions
 export {
@@ -65,4 +65,4 @@ export {
   type ExportScope,
   type MermaidOptions,
   type GraphStats,
-} from './export.js';
+} from './export';

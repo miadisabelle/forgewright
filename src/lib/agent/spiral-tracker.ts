@@ -8,9 +8,9 @@
  * Every invocation is a spiral, not a loop — the radius expands with each cycle.
  */
 
-import type { DirectionName } from '../types/directions.js';
-import type { SpiralPosition } from '../types/session.js';
-import { DIRECTION_NAMES } from '../types/directions.js';
+import type { DirectionName } from '../types/directions';
+import type { SpiralPosition } from '../types/session';
+import { DIRECTION_NAMES } from '../types/directions';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

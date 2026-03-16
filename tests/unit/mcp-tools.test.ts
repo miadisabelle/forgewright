@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ToolResult } from '@forgewright/lib/mcp/guards.js';
-import { clearAuditLog } from '@forgewright/lib/mcp/guards.js';
+import type { ToolResult } from '@forgewright/lib/mcp/guards';
+import { clearAuditLog } from '@forgewright/lib/mcp/guards';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -184,12 +184,12 @@ vi.mock('@forgewright/lib/ceremony/runtime.js', () => {
 
 // ─── Import tool modules AFTER mocks are set ─────────────────────────────────
 
-import { handlers as pdeHandlers } from '@forgewright/lib/mcp/tools/pde.js';
-import { handlers as smHandlers } from '@forgewright/lib/mcp/tools/sm.js';
-import { handlers as stcHandlers } from '@forgewright/lib/mcp/tools/stc.js';
-import { handlers as ceremonyHandlers, clearCeremonies } from '@forgewright/lib/mcp/tools/ceremony.js';
-import { handlers as sessionHandlers, clearSessions } from '@forgewright/lib/mcp/tools/session.js';
-import { handlers as graphHandlers, resetGraph } from '@forgewright/lib/mcp/tools/graph.js';
+import { handlers as pdeHandlers } from '@forgewright/lib/mcp/tools/pde';
+import { handlers as smHandlers } from '@forgewright/lib/mcp/tools/sm';
+import { handlers as stcHandlers } from '@forgewright/lib/mcp/tools/stc';
+import { handlers as ceremonyHandlers, clearCeremonies } from '@forgewright/lib/mcp/tools/ceremony';
+import { handlers as sessionHandlers, clearSessions } from '@forgewright/lib/mcp/tools/session';
+import { handlers as graphHandlers, resetGraph } from '@forgewright/lib/mcp/tools/graph';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

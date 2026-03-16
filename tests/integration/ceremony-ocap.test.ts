@@ -9,11 +9,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CeremonyRuntime } from '@forgewright/lib/ceremony/runtime.js';
-import { ConsentManager } from '@forgewright/lib/ceremony/consent.js';
-import { PHASE_ORDER } from '@forgewright/lib/types/ceremony.js';
-import { isToolAllowedInPhase, PHASE_DEFINITIONS } from '@forgewright/lib/ceremony/phases.js';
-import type { CeremonyPhase } from '@forgewright/lib/types/ceremony.js';
+import { CeremonyRuntime } from '@forgewright/lib/ceremony/runtime';
+import { ConsentManager } from '@forgewright/lib/ceremony/consent';
+import { PHASE_ORDER } from '@forgewright/lib/types/ceremony';
+import { isToolAllowedInPhase, PHASE_DEFINITIONS } from '@forgewright/lib/ceremony/phases';
+import type { CeremonyPhase } from '@forgewright/lib/types/ceremony';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

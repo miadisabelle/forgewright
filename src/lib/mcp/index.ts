@@ -5,7 +5,7 @@ export {
   createForgewrightServer,
   startServer,
   registerNamespace,
-} from './server.js';
+} from './server';
 
 export {
   withGuards,
@@ -21,4 +21,4 @@ export {
   type ToolContext,
   type Guard,
   type AuditEntry,
-} from './guards.js';
+} from './guards';

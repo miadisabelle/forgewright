@@ -6,9 +6,9 @@
  * as audit entries, even when access is allowed.
  */
 
-import type { AccessLevel, AccessDecision, OcapMetadata } from '../types/index.js';
-import type { GraphNode, GraphEdge } from '../types/index.js';
-import type { OcapContext, SubgraphResult } from './database.js';
+import type { AccessLevel, AccessDecision, OcapMetadata } from '../types/index';
+import type { GraphNode, GraphEdge } from '../types/index';
+import type { OcapContext, SubgraphResult } from './database';
 
 // ─── Access Level Hierarchy ──────────────────────────────────────────────────
 

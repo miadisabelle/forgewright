@@ -6,9 +6,9 @@
  * ceremony boundaries.
  */
 
-import type { GraphNode, GraphEdge, NodeType, EdgeType } from '../types/index.js';
-import { ForgewrightGraph, type OcapContext, type SubgraphResult } from './database.js';
-import { filterNodes, filterEdges, filterSubgraph, filterQuery } from './ocap-filter.js';
+import type { GraphNode, GraphEdge, NodeType, EdgeType } from '../types/index';
+import { ForgewrightGraph, type OcapContext, type SubgraphResult } from './database';
+import { filterNodes, filterEdges, filterSubgraph, filterQuery } from './ocap-filter';
 
 // ─── Neighborhood Query ──────────────────────────────────────────────────────
 

@@ -12,19 +12,19 @@ import type {
   CeremonyRecord,
   CeremonyEvent,
   CeremonyGuidance,
-} from '../types/ceremony.js';
-import { PHASE_ORDER } from '../types/ceremony.js';
-import { DIRECTION_NAMES } from '../types/directions.js';
+} from '../types/ceremony';
+import { PHASE_ORDER } from '../types/ceremony';
+import { DIRECTION_NAMES } from '../types/directions';
 import {
   validateAdvance,
   validateRetreat,
   isToolAllowedInPhase,
   PHASE_DEFINITIONS,
   type PhaseTransitionResult,
-} from './phases.js';
-import { mapPhaseToDirection, getDirectionGuidance, getCenterGuidance, isBalanced } from './medicine-wheel.js';
-import { ConsentManager } from './consent.js';
-import { createOcapGuard, type OcapGuardContext, type GuardAuditEntry } from './ocap-guard.js';
+} from './phases';
+import { mapPhaseToDirection, getDirectionGuidance, getCenterGuidance, isBalanced } from './medicine-wheel';
+import { ConsentManager } from './consent';
+import { createOcapGuard, type OcapGuardContext, type GuardAuditEntry } from './ocap-guard';
 
 // ─── Runtime Event Types ─────────────────────────────────────────────────────
 

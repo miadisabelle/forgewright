@@ -7,11 +7,11 @@
  * The wheel is not decoration — it is the platform's cognitive architecture.
  */
 
-import type { CeremonyPhase } from '../types/ceremony.js';
-import type { DirectionName } from '../types/directions.js';
-import type { NarrativeBeat } from '../types/narrative.js';
-import { DIRECTIONS, DIRECTION_NAMES } from '../types/directions.js';
-import type { DirectionAlignment } from './phases.js';
+import type { CeremonyPhase } from '../types/ceremony';
+import type { DirectionName } from '../types/directions';
+import type { NarrativeBeat } from '../types/narrative';
+import { DIRECTIONS, DIRECTION_NAMES } from '../types/directions';
+import type { DirectionAlignment } from './phases';
 
 // ─── Phase → Direction Mapping ───────────────────────────────────────────────
 

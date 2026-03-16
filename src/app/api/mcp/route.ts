@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createForgewrightServer } from '@forgewright/lib/mcp/server.js';
+import { createForgewrightServer } from '@forgewright/lib/mcp/server';
 
 // Cached server instance (created once, reused across requests)
 let _serverPromise: ReturnType<typeof createForgewrightServer> | null = null;

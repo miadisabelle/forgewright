@@ -5,7 +5,7 @@
  * If unavailable, provides template-based generation as fallback.
  */
 
-import type { StateMachineDefinition, StateDef, TransitionDef, EventSourceDef } from '../types/smdf.js';
+import type { StateMachineDefinition, StateDef, TransitionDef, EventSourceDef } from '../types/smdf';
 
 // ─── smcraft codegen import attempt ──────────────────────────────────────────
 
@@ -35,11 +35,11 @@ async function tryImportSmcraft(): Promise<boolean> {
   if (_importAttempted) return !!(_codegen && _parser);
   _importAttempted = true;
   try {
+    const codegenMod = 'smcraft/codegen';
+    const parserMod = 'smcraft/parser';
     [_codegen, _parser] = await Promise.all([
-      // @ts-expect-error — smcraft may not be built; fallback is intentional
-      import('smcraft/codegen') as Promise<SmcraftCodegen>,
-      // @ts-expect-error — smcraft may not be built; fallback is intentional
-      import('smcraft/parser') as Promise<SmcraftParser>,
+      import(/* webpackIgnore: true */ codegenMod) as Promise<SmcraftCodegen>,
+      import(/* webpackIgnore: true */ parserMod) as Promise<SmcraftParser>,
     ]);
     return true;
   } catch {

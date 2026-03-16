@@ -18,7 +18,7 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '@forgewright/lib/mcp/guards.js';
+} from '@forgewright/lib/mcp/guards';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

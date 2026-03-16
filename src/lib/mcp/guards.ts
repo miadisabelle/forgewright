@@ -8,8 +8,8 @@
  * so we implement via higher-order functions.
  */
 
-import type { CeremonyPhase } from '../types/ceremony.js';
-import type { AccessLevel } from '../types/ocap.js';
+import type { CeremonyPhase } from '../types/ceremony';
+import type { AccessLevel } from '../types/ocap';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

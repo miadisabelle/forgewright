@@ -9,12 +9,12 @@ import {
   DIRECTIONS,
   DIRECTION_NAMES,
   type DirectionName,
-} from '../types/directions.js';
+} from '../types/directions';
 import type {
   OntologicalDecomposition,
   AmbiguityFlag,
-} from '../types/pde.js';
-import type { CeremonyGuidance } from '../types/ceremony.js';
+} from '../types/pde';
+import type { CeremonyGuidance } from '../types/ceremony';
 
 // ─── Assessment result (enriches decomposition in-place) ─────────────────────
 

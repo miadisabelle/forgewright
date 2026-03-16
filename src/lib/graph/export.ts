@@ -4,10 +4,10 @@
  * Four Directions positioning: East=right, South=bottom, West=left, North=top.
  */
 
-import type { GraphNode, GraphEdge, NodeType, EdgeType, DirectionName } from '../types/index.js';
-import { DIRECTIONS } from '../types/index.js';
-import { ForgewrightGraph, type OcapContext, type SubgraphResult } from './database.js';
-import { filterNodes, filterEdges } from './ocap-filter.js';
+import type { GraphNode, GraphEdge, NodeType, EdgeType, DirectionName } from '../types/index';
+import { DIRECTIONS } from '../types/index';
+import { ForgewrightGraph, type OcapContext, type SubgraphResult } from './database';
+import { filterNodes, filterEdges } from './ocap-filter';
 
 // ─── Export Scope ────────────────────────────────────────────────────────────
 

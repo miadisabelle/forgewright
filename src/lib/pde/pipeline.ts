@@ -5,17 +5,17 @@
  * Emits events at stage transitions, stores intermediate results.
  */
 
-import { decompose, buildSystemPrompt, formatUserMessage, type DecomposeOptions } from './decompose.js';
-import { enrich, type GraphContext } from './enrich.js';
-import { assess } from './assess.js';
-import { plan } from './plan.js';
-import { store } from './storage.js';
-import { DIRECTIONS } from '../types/directions.js';
+import { decompose, buildSystemPrompt, formatUserMessage, type DecomposeOptions } from './decompose';
+import { enrich, type GraphContext } from './enrich';
+import { assess } from './assess';
+import { plan } from './plan';
+import { store } from './storage';
+import { DIRECTIONS } from '../types/directions';
 import type {
   OntologicalDecomposition,
   StructuredPlan,
   PipelineStage,
-} from '../types/pde.js';
+} from '../types/pde';
 
 // ─── Pipeline event emitter ──────────────────────────────────────────────────
 

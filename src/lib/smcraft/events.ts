@@ -4,7 +4,7 @@
  * a relational act in the creative ceremony.
  */
 
-import type { StateMachineEvent } from '../types/smdf.js';
+import type { StateMachineEvent } from '../types/smdf';
 
 // ─── Event ID Constants ──────────────────────────────────────────────────────
 

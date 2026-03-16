@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { DirectionNameSchema, type DirectionName } from './directions.js';
-import type { CeremonyGuidance } from './ceremony.js';
-import type { NarrativeBeat } from './narrative.js';
+import { DirectionNameSchema, type DirectionName } from './directions';
+import type { CeremonyGuidance } from './ceremony';
+import type { NarrativeBeat } from './narrative';
 
 // ─── Urgency ─────────────────────────────────────────────────────────────────
 

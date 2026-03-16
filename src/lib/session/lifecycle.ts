@@ -6,13 +6,13 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { ForgewrightSession, SpiralPosition } from '../types/session.js';
-import type { DirectionName } from '../types/directions.js';
-import type { NarrativeArc, NarrativeBeat } from '../types/narrative.js';
-import { DIRECTION_NAMES, DIRECTIONS } from '../types/directions.js';
-import { createArc, addBeat, getArcSummary } from '../narrative/arc-manager.js';
-import { computeWilsonScore, type WilsonContext } from '../narrative/wilson-score.js';
-import { DEFAULT_CHECKPOINT_POLICY } from './config.js';
+import type { ForgewrightSession, SpiralPosition } from '../types/session';
+import type { DirectionName } from '../types/directions';
+import type { NarrativeArc, NarrativeBeat } from '../types/narrative';
+import { DIRECTION_NAMES, DIRECTIONS } from '../types/directions';
+import { createArc, addBeat, getArcSummary } from '../narrative/arc-manager';
+import { computeWilsonScore, type WilsonContext } from '../narrative/wilson-score';
+import { DEFAULT_CHECKPOINT_POLICY } from './config';
 
 // ─── Direction Cycle Order ───────────────────────────────────────────────────
 

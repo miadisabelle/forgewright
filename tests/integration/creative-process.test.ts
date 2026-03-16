@@ -10,17 +10,17 @@ import {
   createCreativeProcessMachine,
   getCreativeProcessStateNames,
   stateToPhase,
-} from '@forgewright/lib/smcraft/creative-process.js';
+} from '@forgewright/lib/smcraft/creative-process';
 import {
   createMachine,
   fireEvent,
   getCurrentState,
   destroyMachine,
   type MachineInstance,
-} from '@forgewright/lib/smcraft/runtime-bridge.js';
-import { EVENT_IDS } from '@forgewright/lib/smcraft/events.js';
-import { OscillationDetector } from '@forgewright/lib/smcraft/oscillation.js';
-import type { StateMachineEvent } from '@forgewright/lib/types/smdf.js';
+} from '@forgewright/lib/smcraft/runtime-bridge';
+import { EVENT_IDS } from '@forgewright/lib/smcraft/events';
+import { OscillationDetector } from '@forgewright/lib/smcraft/oscillation';
+import type { StateMachineEvent } from '@forgewright/lib/types/smdf';
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({

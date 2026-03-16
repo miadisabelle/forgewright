@@ -7,7 +7,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { ConsentState } from '../types/ocap.js';
+import type { ConsentState } from '../types/ocap';
 
 // ─── Consent Request ─────────────────────────────────────────────────────────
 

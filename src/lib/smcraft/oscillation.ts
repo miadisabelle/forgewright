@@ -7,7 +7,7 @@
  * desired outcome. This detector flags those patterns early.
  */
 
-import type { StateMachineEvent } from '../types/smdf.js';
+import type { StateMachineEvent } from '../types/smdf';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

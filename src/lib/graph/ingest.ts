@@ -13,7 +13,7 @@ import type {
   StateMachineDefinition,
   CeremonyRecord,
   NarrativeBeat,
-} from '../types/index.js';
+} from '../types/index';
 import {
   IntentNodeSchema,
   ActionStepNodeSchema,
@@ -24,8 +24,8 @@ import {
   StateNodeSchema,
   EventNodeSchema,
   SpecNodeSchema,
-} from '../types/index.js';
-import { ForgewrightGraph } from './database.js';
+} from '../types/index';
+import { ForgewrightGraph } from './database';
 
 // ─── Default OCAP for ingested data ─────────────────────────────────────────
 

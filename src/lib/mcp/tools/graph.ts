@@ -31,7 +31,7 @@ import {
   summaryStats,
   computeWilsonAlignment,
   type WilsonScope,
-} from '../../graph/index.js';
+} from '../../graph/index';
 import {
   withGuards,
   requireOcap,
@@ -41,7 +41,7 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
+} from '../guards';
 
 // ─── Lazy graph instance ─────────────────────────────────────────────────────
 // Singleton: created once on first tool call, reused thereafter.

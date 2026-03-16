@@ -10,8 +10,8 @@ import type {
   StateMachineDefinition,
   StateDef,
   StateMachineEvent,
-} from '../types/smdf.js';
-import { EVENT_IDS } from './events.js';
+} from '../types/smdf';
+import { EVENT_IDS } from './events';
 
 // ─── Runtime interface (what we expose regardless of backend) ────────────────
 
@@ -52,8 +52,8 @@ async function getSmcraftRuntime(): Promise<SmcraftRuntime | null> {
   if (_smcraftAttempted) return _smcraftRuntime;
   _smcraftAttempted = true;
   try {
-    // @ts-expect-error — smcraft may not be built; fallback is intentional
-    _smcraftRuntime = await import('smcraft/runtime') as SmcraftRuntime;
+    const mod = 'smcraft/runtime';
+    _smcraftRuntime = await import(/* webpackIgnore: true */ mod) as SmcraftRuntime;
   } catch {
     _smcraftRuntime = null;
   }

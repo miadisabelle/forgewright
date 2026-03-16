@@ -6,8 +6,8 @@
  * callers know *where* in the wheel to focus remedial ceremony.
  */
 
-import type { WilsonScore } from '../types/narrative.js';
-import type { DirectionName } from '../types/directions.js';
+import type { WilsonScore } from '../types/narrative';
+import type { DirectionName } from '../types/directions';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

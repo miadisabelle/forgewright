@@ -16,13 +16,13 @@
 
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { DirectionNameSchema, DIRECTION_NAMES, DIRECTIONS, type DirectionName } from '../../types/directions.js';
-import { getSession } from '../tools/session.js';
-import { handlers as pdeHandlers } from '../tools/pde.js';
-import { handlers as graphHandlers } from '../tools/graph.js';
-import { handlers as stcHandlers } from '../tools/stc.js';
-import { handlers as ceremonyHandlers } from '../tools/ceremony.js';
-import { handlers as smHandlers } from '../tools/sm.js';
+import { DirectionNameSchema, DIRECTION_NAMES, DIRECTIONS, type DirectionName } from '../../types/directions';
+import { getSession } from '../tools/session';
+import { handlers as pdeHandlers } from '../tools/pde';
+import { handlers as graphHandlers } from '../tools/graph';
+import { handlers as stcHandlers } from '../tools/stc';
+import { handlers as ceremonyHandlers } from '../tools/ceremony';
+import { handlers as smHandlers } from '../tools/sm';
 import {
   withGuards,
   requireOcap,
@@ -32,8 +32,8 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
-import type { ToolDefinition } from '../tools/sm.js';
+} from '../guards';
+import type { ToolDefinition } from '../tools/sm';
 
 // ─── Input Schema ────────────────────────────────────────────────────────────
 

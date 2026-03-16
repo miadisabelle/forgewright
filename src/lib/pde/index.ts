@@ -6,23 +6,23 @@
  */
 
 // Stage 1: EAST — Decompose
-export { decompose, buildSystemPrompt, formatUserMessage } from './decompose.js';
-export type { DecomposeOptions } from './decompose.js';
+export { decompose, buildSystemPrompt, formatUserMessage } from './decompose';
+export type { DecomposeOptions } from './decompose';
 
 // Stage 2: SOUTH — Enrich
-export { enrich } from './enrich.js';
-export type { GraphContext, EnrichedDecomposition } from './enrich.js';
+export { enrich } from './enrich';
+export type { GraphContext, EnrichedDecomposition } from './enrich';
 
 // Stage 3: WEST — Assess
-export { assess } from './assess.js';
-export type { AssessedDecomposition } from './assess.js';
+export { assess } from './assess';
+export type { AssessedDecomposition } from './assess';
 
 // Stage 4: NORTH — Plan
-export { plan } from './plan.js';
+export { plan } from './plan';
 
 // Full pipeline
-export { runPipeline, buildLlmPrompt, runPipelineFromLlmResponse } from './pipeline.js';
-export type { PipelineEvent, PipelineEventHandler, PipelineOptions } from './pipeline.js';
+export { runPipeline, buildLlmPrompt, runPipelineFromLlmResponse } from './pipeline';
+export type { PipelineEvent, PipelineEventHandler, PipelineOptions } from './pipeline';
 
 // Storage
-export { store, load, list, renderMarkdown } from './storage.js';
+export { store, load, list, renderMarkdown } from './storage';

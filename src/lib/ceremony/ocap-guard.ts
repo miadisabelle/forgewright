@@ -16,9 +16,9 @@
  * All access decisions are logged to an audit trail.
  */
 
-import type { AccessLevel, OcapMetadata, ConsentState } from '../types/ocap.js';
-import type { CeremonyPhase } from '../types/ceremony.js';
-import { phaseIndex, isToolAllowedInPhase } from './phases.js';
+import type { AccessLevel, OcapMetadata, ConsentState } from '../types/ocap';
+import type { CeremonyPhase } from '../types/ceremony';
+import { phaseIndex, isToolAllowedInPhase } from './phases';
 
 // ─── Access Hierarchy ────────────────────────────────────────────────────────
 

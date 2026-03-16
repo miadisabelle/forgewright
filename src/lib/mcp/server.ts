@@ -145,7 +145,7 @@ export async function createForgewrightServer(): Promise<McpServer> {
 
   // Compound pipelines namespace — cross-domain chained operations
   try {
-    const pipelineMod = await import('./pipelines/index.js');
+    const pipelineMod = await import('./pipelines/index');
     const pipelineModule = extractToolModule(pipelineMod);
     if (pipelineModule) {
       registerNamespace(server, 'pipeline', pipelineModule);

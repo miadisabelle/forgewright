@@ -9,19 +9,19 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { runPipeline, type PipelineEvent } from '@forgewright/lib/pde/pipeline.js';
-import { ForgewrightGraph } from '@forgewright/lib/graph/database.js';
-import { ingestPDE, ingestStateMachine } from '@forgewright/lib/graph/ingest.js';
-import { neighborhood } from '@forgewright/lib/graph/queries.js';
-import { stcToSMDF } from '@forgewright/lib/smcraft/stc-adapter.js';
-import { createMachine, fireEvent, destroyMachine } from '@forgewright/lib/smcraft/runtime-bridge.js';
-import { EVENT_IDS } from '@forgewright/lib/smcraft/events.js';
-import { generateBeat, type BeatContext } from '@forgewright/lib/narrative/beat-generator.js';
-import { createArc, addBeat, validateArcCoherence } from '@forgewright/lib/narrative/arc-manager.js';
-import type { OcapContext } from '@forgewright/lib/graph/database.js';
-import type { StructuralTensionChart } from '@forgewright/lib/types/stc.js';
-import type { DirectionName } from '@forgewright/lib/types/directions.js';
-import type { StructuredPlan } from '@forgewright/lib/types/pde.js';
+import { runPipeline, type PipelineEvent } from '@forgewright/lib/pde/pipeline';
+import { ForgewrightGraph } from '@forgewright/lib/graph/database';
+import { ingestPDE, ingestStateMachine } from '@forgewright/lib/graph/ingest';
+import { neighborhood } from '@forgewright/lib/graph/queries';
+import { stcToSMDF } from '@forgewright/lib/smcraft/stc-adapter';
+import { createMachine, fireEvent, destroyMachine } from '@forgewright/lib/smcraft/runtime-bridge';
+import { EVENT_IDS } from '@forgewright/lib/smcraft/events';
+import { generateBeat, type BeatContext } from '@forgewright/lib/narrative/beat-generator';
+import { createArc, addBeat, validateArcCoherence } from '@forgewright/lib/narrative/arc-manager';
+import type { OcapContext } from '@forgewright/lib/graph/database';
+import type { StructuralTensionChart } from '@forgewright/lib/types/stc';
+import type { DirectionName } from '@forgewright/lib/types/directions';
+import type { StructuredPlan } from '@forgewright/lib/types/pde';
 
 // Mock filesystem writes so tests never touch disk
 vi.mock('node:fs/promises', () => ({

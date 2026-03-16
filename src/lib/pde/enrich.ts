@@ -8,11 +8,11 @@
 import {
   DIRECTION_NAMES,
   type DirectionName,
-} from '../types/directions.js';
+} from '../types/directions';
 import type {
   OntologicalDecomposition,
   RelationalIntent,
-} from '../types/pde.js';
+} from '../types/pde';
 
 // ─── Graph context interface (optional external dependency) ──────────────────
 

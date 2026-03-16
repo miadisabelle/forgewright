@@ -13,15 +13,15 @@
  * enforcing checkpoints, detecting oscillation, and honoring sovereignty.
  */
 
-import type { DirectionName } from '../types/directions.js';
-import type { CheckpointPolicy, ForgewrightSession, SpiralPosition } from '../types/session.js';
-import { DIRECTIONS } from '../types/directions.js';
-import { SpiralTracker, SpiralMaxCyclesError } from './spiral-tracker.js';
-import type { DirectionEntry } from './spiral-tracker.js';
-import { detectSessionOscillation } from './oscillation-detector.js';
-import type { SessionOscillationReport } from './oscillation-detector.js';
-import { CheckpointManager } from './checkpoint.js';
-import type { Checkpoint, CheckpointDecision } from './checkpoint.js';
+import type { DirectionName } from '../types/directions';
+import type { CheckpointPolicy, ForgewrightSession, SpiralPosition } from '../types/session';
+import { DIRECTIONS } from '../types/directions';
+import { SpiralTracker, SpiralMaxCyclesError } from './spiral-tracker';
+import type { DirectionEntry } from './spiral-tracker';
+import { detectSessionOscillation } from './oscillation-detector';
+import type { SessionOscillationReport } from './oscillation-detector';
+import { CheckpointManager } from './checkpoint';
+import type { Checkpoint, CheckpointDecision } from './checkpoint';
 
 // ─── Direction Labels ────────────────────────────────────────────────────────
 
@@ -232,7 +232,7 @@ export class AgentLoop {
       }
     }
 
-    if (this.status === 'running') {
+    if ((this.status as AgentLoopStatus) === 'running') {
       this.status = 'completed';
     }
 

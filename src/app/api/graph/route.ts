@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ForgewrightGraph } from '@forgewright/lib/graph/database.js';
+import { ForgewrightGraph } from '@forgewright/lib/graph/database';
 
 let _graphPromise: Promise<ForgewrightGraph> | null = null;
 

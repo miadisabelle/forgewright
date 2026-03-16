@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import type { ForgewrightSession, SpiralPosition } from '../../types/session.js';
+import type { ForgewrightSession, SpiralPosition } from '../../types/session';
 import {
   withGuards,
   auditLog,
@@ -21,8 +21,8 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
-import type { ToolDefinition } from './sm.js';
+} from '../guards';
+import type { ToolDefinition } from './sm';
 
 // ─── Session-scoped session store ────────────────────────────────────────────
 

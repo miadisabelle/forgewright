@@ -9,16 +9,16 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SessionManager } from '@forgewright/lib/session/manager.js';
+import { SessionManager } from '@forgewright/lib/session/manager';
 import {
   clearSessionArcs,
   getSessionArc,
-} from '@forgewright/lib/session/lifecycle.js';
+} from '@forgewright/lib/session/lifecycle';
 import {
   SpiralTracker,
   SpiralMaxCyclesError,
-} from '@forgewright/lib/agent/spiral-tracker.js';
-import type { DirectionName } from '@forgewright/lib/types/directions.js';
+} from '@forgewright/lib/agent/spiral-tracker';
+import type { DirectionName } from '@forgewright/lib/types/directions';
 
 // ─── In-memory filesystem mock ───────────────────────────────────────────────
 

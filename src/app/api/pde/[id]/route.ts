@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { load } from '@forgewright/lib/pde/index.js';
+import { load } from '@forgewright/lib/pde/index';
 
 type RouteContext = { params: Promise<{ id: string }> };
 

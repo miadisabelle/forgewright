@@ -11,7 +11,7 @@ import {
   ForgewrightGraph,
   type OcapContext,
   type SubgraphResult,
-} from '@forgewright/lib/graph/database.js';
+} from '@forgewright/lib/graph/database';
 
 import {
   ingestPDE,
@@ -19,12 +19,12 @@ import {
   ingestCeremony,
   ingestNarrativeBeat,
   ingestKinship,
-} from '@forgewright/lib/graph/ingest.js';
+} from '@forgewright/lib/graph/ingest';
 
 import {
   neighborhood,
   oscillationDetection,
-} from '@forgewright/lib/graph/queries.js';
+} from '@forgewright/lib/graph/queries';
 
 import {
   checkAccess,
@@ -33,16 +33,16 @@ import {
   filterSubgraph,
   clearAuditLog,
   getAuditLog,
-} from '@forgewright/lib/graph/ocap-filter.js';
+} from '@forgewright/lib/graph/ocap-filter';
 
 import {
   computeWilsonAlignment,
-} from '@forgewright/lib/graph/wilson.js';
+} from '@forgewright/lib/graph/wilson';
 
 import {
   toMermaid,
   summaryStats,
-} from '@forgewright/lib/graph/export.js';
+} from '@forgewright/lib/graph/export';
 
 import type {
   GraphNode,
@@ -50,7 +50,7 @@ import type {
   DecompositionResult,
   StateMachineDefinition,
   OcapMetadata,
-} from '@forgewright/lib/types/index.js';
+} from '@forgewright/lib/types/index';
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 

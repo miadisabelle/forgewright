@@ -11,8 +11,8 @@
  * of policy. Ceremony opening always requires human approval.
  */
 
-import type { SpiralPosition, CheckpointPolicy, ForgewrightSession } from '../types/session.js';
-import type { SessionOscillationReport } from './oscillation-detector.js';
+import type { SpiralPosition, CheckpointPolicy, ForgewrightSession } from '../types/session';
+import type { SessionOscillationReport } from './oscillation-detector';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

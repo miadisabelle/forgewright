@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DirectionNameSchema, type DirectionName } from './directions.js';
+import { DirectionNameSchema, type DirectionName } from './directions';
 
 // ─── Creative Phase ──────────────────────────────────────────────────────────
 

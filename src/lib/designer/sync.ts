@@ -17,8 +17,8 @@ import type {
   GraphDelta,
   CanvasNode,
   CanvasEdge,
-} from '../../stores/designer-store.js';
-import type { ToolResult } from '../mcp/guards.js';
+} from '../../stores/designer-store';
+import type { ToolResult } from '../mcp/guards';
 
 // ─── Conflict Types ──────────────────────────────────────────────────────────
 

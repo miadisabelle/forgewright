@@ -13,17 +13,17 @@ export {
   type UnifiedWilsonOptions,
   type UnifiedWilsonResult,
   type SessionMetrics,
-} from './score.js';
+} from './score';
 
 export {
   WilsonTracker,
   type TimestampedScore,
   type Trend,
   type AlertCallback,
-} from './tracker.js';
+} from './tracker';
 
 export {
   generateRecommendations,
   type Recommendation,
   type Urgency,
-} from './recommendations.js';
+} from './recommendations';

@@ -12,9 +12,9 @@
  */
 
 import { z } from 'zod';
-import { handlers as pdeHandlers } from '../tools/pde.js';
-import { handlers as stcHandlers } from '../tools/stc.js';
-import { handlers as smHandlers } from '../tools/sm.js';
+import { handlers as pdeHandlers } from '../tools/pde';
+import { handlers as stcHandlers } from '../tools/stc';
+import { handlers as smHandlers } from '../tools/sm';
 import {
   withGuards,
   requireOcap,
@@ -24,8 +24,8 @@ import {
   type ToolHandler,
   type ToolResult,
   type ToolContext,
-} from '../guards.js';
-import type { ToolDefinition } from '../tools/sm.js';
+} from '../guards';
+import type { ToolDefinition } from '../tools/sm';
 
 // ─── Input Schema ────────────────────────────────────────────────────────────
 

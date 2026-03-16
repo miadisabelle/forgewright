@@ -1,12 +1,12 @@
 // ─── Chronicle Generator ─────────────────────────────────────────────────────
 // Generates session chronicles in the Four Directions structure.
 
-import type { NarrativeArc, NarrativeBeat } from '../types/narrative.js';
-import type { ForgewrightSession } from '../types/session.js';
-import type { DirectionName } from '../types/directions.js';
-import { DIRECTIONS, DIRECTION_NAMES } from '../types/directions.js';
-import { getWilsonRecommendation, type WilsonContext } from './wilson-score.js';
-import { validateArcCoherence } from './arc-manager.js';
+import type { NarrativeArc, NarrativeBeat } from '../types/narrative';
+import type { ForgewrightSession } from '../types/session';
+import type { DirectionName } from '../types/directions';
+import { DIRECTIONS, DIRECTION_NAMES } from '../types/directions';
+import { getWilsonRecommendation, type WilsonContext } from './wilson-score';
+import { validateArcCoherence } from './arc-manager';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

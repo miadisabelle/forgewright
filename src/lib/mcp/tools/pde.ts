@@ -12,9 +12,9 @@
  */
 
 import { z } from 'zod';
-import { runPipeline } from '../../pde/pipeline.js';
-import { load, list, renderMarkdown } from '../../pde/storage.js';
-import type { ToolDefinition } from './sm.js';
+import { runPipeline } from '../../pde/pipeline';
+import { load, list, renderMarkdown } from '../../pde/storage';
+import type { ToolDefinition } from './sm';
 import {
   withGuards,
   requireOcap,
@@ -23,7 +23,7 @@ import {
   mcpSuccess,
   type ToolHandler,
   type ToolResult,
-} from '../guards.js';
+} from '../guards';
 
 // ─── Input Schemas ───────────────────────────────────────────────────────────
 

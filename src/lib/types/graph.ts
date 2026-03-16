@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { DirectionNameSchema, type DirectionName } from './directions.js';
-import { OcapMetadataSchema, type OcapMetadata } from './ocap.js';
+import { DirectionNameSchema, type DirectionName } from './directions';
+import { OcapMetadataSchema, type OcapMetadata } from './ocap';
 
 // ─── Edge Types (11 canonical relationships) ─────────────────────────────────
 

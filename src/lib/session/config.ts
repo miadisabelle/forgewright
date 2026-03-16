@@ -5,8 +5,8 @@
  * settings. Deep merge preserves user overrides while filling gaps.
  */
 
-import { ForgewrightConfigSchema, type ForgewrightConfig } from '../types/session.js';
-import type { CheckpointPolicy } from '../types/session.js';
+import { ForgewrightConfigSchema, type ForgewrightConfig } from '../types/session';
+import type { CheckpointPolicy } from '../types/session';
 
 // ─── Default Checkpoint Policy ───────────────────────────────────────────────
 
