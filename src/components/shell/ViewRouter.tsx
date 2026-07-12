@@ -8,6 +8,9 @@ import type { ViewTab } from './Toolbar';
 const StateMachineView = lazy(
   () => import('@forgewright/components/designer/state-machine/StateMachineView')
 );
+const ChronicleView = lazy(
+  () => import('@forgewright/components/chronicle/ChronicleView')
+);
 
 // ─── Loading fallback ────────────────────────────────────────────────────────
 
@@ -42,38 +45,6 @@ function GraphViewPlaceholder() {
   );
 }
 
-// ─── Chronicle placeholder ───────────────────────────────────────────────────
-
-function ChronicleView() {
-  return (
-    <div className="flex h-full flex-col overflow-y-auto p-6">
-      <h2 className="text-sm font-semibold tracking-widest text-neutral-400 uppercase mb-4">
-        Session Chronicle
-      </h2>
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-        <p className="text-xs text-neutral-500 italic leading-relaxed">
-          The chronicle records the narrative arc of each ceremony spiral.
-          As you move through East → South → West → North, beats are captured here —
-          vision, growth, action, and reflection woven into the living ledger.
-        </p>
-        <div className="mt-4 space-y-2">
-          {(['🌅 East — Inquiry', '🔥 South — Growth', '🌊 West — Action', '❄️ North — Reflection'] as const).map(
-            (label) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 rounded border border-neutral-800 px-3 py-2 text-xs text-neutral-600"
-              >
-                <span>{label}</span>
-                <span className="ml-auto text-[10px] text-neutral-700">awaiting beats…</span>
-              </div>
-            ),
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface ViewRouterProps {
@@ -91,7 +62,11 @@ export default function ViewRouter({ activeView }: ViewRouterProps) {
     case 'graph':
       return <GraphViewPlaceholder />;
     case 'chronicle':
-      return <ChronicleView />;
+      return (
+        <Suspense fallback={<ViewLoading label="Loading Miadi Chronicle…" />}>
+          <ChronicleView />
+        </Suspense>
+      );
     default:
       return null;
   }
