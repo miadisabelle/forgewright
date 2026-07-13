@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getChronicleSnapshot } from '../../src/lib/chronicle/client';
+import {
+  findParentEpisode,
+  getChronicleSnapshot,
+} from '../../src/lib/chronicle/client';
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -61,6 +64,9 @@ describe('getChronicleSnapshot', () => {
         ...episodeNode.metadata,
         kind: 'structured_plan',
         relative_path: '2026-07-10-episode-122/forgewright/plans/one.json',
+        parent_id: episodeNode.id,
+        goal_id: 'goal:plan-insight',
+        goal_summary: 'Mia overview + Miette perspective + source trace',
       },
     };
     const machineNode = {
@@ -96,10 +102,34 @@ describe('getChronicleSnapshot', () => {
       schemaVersion: 'chronicle.episode-yaml.v1',
       status: 'composing',
     });
-    expect(snapshot.structuredPlans.map(({ id }) => id)).toEqual(['plan:one']);
+    expect(snapshot.structuredPlans).toEqual([
+      expect.objectContaining({
+        id: 'plan:one',
+        goalId: 'goal:plan-insight',
+        goalSummary: 'Mia overview + Miette perspective + source trace',
+      }),
+    ]);
+    expect(findParentEpisode(snapshot.structuredPlans[0], snapshot.episodes)?.id).toBe(
+      episodeNode.id,
+    );
     expect(snapshot.stateMachines.map(({ id }) => id)).toEqual(['machine:one']);
     expect(snapshot.ignoredNodeCount).toBe(0);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns no episode association for a missing parent', () => {
+    expect(
+      findParentEpisode(
+        {
+          id: 'plan:orphan',
+          name: 'Orphan plan',
+          kind: 'structured_plan',
+          relativePath: 'plans/orphan.json',
+          parentId: 'chronicle:missing',
+        },
+        [],
+      ),
+    ).toBeNull();
   });
 
   it('ignores unrelated, incompatible, and unsafe references', async () => {
