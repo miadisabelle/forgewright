@@ -46,6 +46,8 @@ export interface ChronicleArtifactReference {
   kind: ArtifactKind;
   relativePath: string;
   parentId?: string;
+  goalId?: string;
+  goalSummary?: string;
   schemaVersion?: string;
   status?: string;
   direction?: Direction;
@@ -151,6 +153,8 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
 
   const description = optionalString(node.description);
   const parentId = optionalString(node.metadata.parent_id);
+  const goalId = optionalString(node.metadata.goal_id);
+  const goalSummary = optionalString(node.metadata.goal_summary);
   const schemaVersion = optionalString(node.metadata.schema_version);
   const status = optionalString(node.metadata.status);
   const createdAt = optionalString(node.created_at);
@@ -158,6 +162,8 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
 
   if (description) reference.description = description;
   if (parentId) reference.parentId = parentId;
+  if (goalId) reference.goalId = goalId;
+  if (goalSummary) reference.goalSummary = goalSummary;
   if (schemaVersion) reference.schemaVersion = schemaVersion;
   if (status) reference.status = status;
   if (isDirection(node.direction)) reference.direction = node.direction;
@@ -165,6 +171,16 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
   if (updatedAt) reference.updatedAt = updatedAt;
 
   return reference;
+}
+
+export function findParentEpisode(
+  plan: ChronicleArtifactReference,
+  episodes: readonly ChronicleArtifactReference[],
+): ChronicleArtifactReference | null {
+  if (plan.kind !== 'structured_plan' || !plan.parentId) return null;
+  return episodes.find(
+    (episode) => episode.kind === 'chronicle_episode' && episode.id === plan.parentId,
+  ) ?? null;
 }
 
 function byNewestThenName(

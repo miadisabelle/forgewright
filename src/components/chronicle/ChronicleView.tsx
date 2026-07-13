@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type {
-  ChronicleArtifactReference,
-  ChronicleSnapshot,
+import {
+  findParentEpisode,
+  type ChronicleArtifactReference,
+  type ChronicleSnapshot,
 } from '@forgewright/lib/chronicle/client';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
 
@@ -22,12 +23,23 @@ function formatTimestamp(value?: string): string | null {
   }).format(timestamp);
 }
 
-function ReferenceCard({ reference }: { reference: ChronicleArtifactReference }) {
+function ReferenceCard({
+  reference,
+  parentEpisode,
+}: {
+  reference: ChronicleArtifactReference;
+  parentEpisode?: ChronicleArtifactReference | null;
+}) {
   const timestamp = formatTimestamp(reference.updatedAt ?? reference.createdAt);
   const direction = reference.direction ? DIRECTIONS[reference.direction] : null;
 
   return (
     <article className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 transition-colors hover:border-neutral-700">
+      {reference.kind === 'structured_plan' ? (
+        <p className="mb-3 text-[10px] uppercase tracking-wide text-cyan-500">
+          {parentEpisode ? `Contained in ${parentEpisode.name}` : 'Episode association unavailable'}
+        </p>
+      ) : null}
       <div className="flex items-start gap-3">
         <span className="mt-0.5 text-lg" aria-hidden="true">
           {direction?.emoji ?? '📜'}
@@ -44,6 +56,11 @@ function ReferenceCard({ reference }: { reference: ChronicleArtifactReference })
           {reference.description ? (
             <p className="mt-1 text-xs leading-relaxed text-neutral-400">
               {reference.description}
+            </p>
+          ) : null}
+          {reference.goalSummary ? (
+            <p className="mt-2 rounded border border-amber-900/40 bg-amber-950/20 px-2.5 py-2 text-xs leading-relaxed text-amber-200/80">
+              <span className="font-medium text-amber-400">Goal:</span> {reference.goalSummary}
             </p>
           ) : null}
           <p className="mt-3 break-all font-mono text-[10px] text-neutral-600">
@@ -158,7 +175,7 @@ export default function ChronicleView() {
           <div className="mx-auto max-w-4xl space-y-6">
             <div className="grid gap-3 sm:grid-cols-3">
               <Metric label="Episodes" value={snapshot.episodes.length} />
-              <Metric label="Structured plans" value={snapshot.structuredPlans.length} deferred />
+              <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
               <Metric label="State machines" value={snapshot.stateMachines.length} deferred />
             </div>
 
@@ -194,6 +211,30 @@ export default function ChronicleView() {
               ) : (
                 <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-xs text-neutral-600">
                   No Chronicle episode references are registered yet.
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Registered structured plans
+                </h3>
+                <span className="text-[10px] text-neutral-600">Medicine Wheel relations</span>
+              </div>
+              {snapshot.structuredPlans.length > 0 ? (
+                <div className="space-y-3">
+                  {snapshot.structuredPlans.map((plan) => (
+                    <ReferenceCard
+                      key={plan.id}
+                      reference={plan}
+                      parentEpisode={findParentEpisode(plan, snapshot.episodes)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-xs text-neutral-600">
+                  No structured-plan references are registered yet.
                 </div>
               )}
             </div>

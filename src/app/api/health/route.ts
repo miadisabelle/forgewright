@@ -13,7 +13,7 @@ export async function GET() {
       version: '0.1.0',
       capabilities: {
         chronicle: 'read-only',
-        structuredPlans: 'deferred',
+        structuredPlans: 'read-only',
         stateMachines: 'deferred',
         mcpHttp: 'deferred',
       },
