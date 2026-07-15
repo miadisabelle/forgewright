@@ -183,6 +183,10 @@ export function findParentEpisode(
   ) ?? null;
 }
 
+export function getEpisodeInquiryPath(episode: ChronicleArtifactReference): string {
+  return episode.relativePath.replace(/\/episode\.ya?ml$/, '');
+}
+
 function byNewestThenName(
   left: ChronicleArtifactReference,
   right: ChronicleArtifactReference,
@@ -294,7 +298,8 @@ function isHttpUrl(value: string): boolean {
 function normalizeInquiryRelation(value: unknown): InquiryRelation | null {
   if (!isRecord(value)) return null;
 
-  const artefact = optionalString(value.artefact);
+  const artefact = optionalString(value.artefact)
+    ?? (isRecord(value.artefact) ? optionalString(value.artefact.id) : undefined);
   if (!artefact) return null;
 
   const relation: InquiryRelation = { artefact, syncState: 'never-synced' };
@@ -321,7 +326,9 @@ function collectInquiryRelations(value: unknown): InquiryRelation[] {
   if (!isRecord(value)) return [];
 
   let raw: unknown[] = [];
-  if (Array.isArray(value.weaves)) {
+  if (Array.isArray(value.inquiry_weaves)) {
+    raw = value.inquiry_weaves;
+  } else if (Array.isArray(value.weaves)) {
     // Grouped by episode (episode_number can match several); flatten every weave.
     raw = value.weaves.flatMap((weave) =>
       isRecord(weave) && Array.isArray(weave.inquiries) ? weave.inquiries : [],

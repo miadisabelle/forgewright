@@ -19,10 +19,15 @@ function createInquiryFetch(payload: unknown, status = 200) {
 }
 
 const ep126Inquiry = {
-  artefact: 'ep126-mila-ai-event-260715-b08218a8-0441-4596-a16e-47483d3ab57c',
+  id: `inquiry-weave:${EP_PATH}:ep126-mila-ai-event-260715-b08218a8-0441-4596-a16e-47483d3ab57c`,
+  weave: 1,
+  artefact: {
+    id: 'ep126-mila-ai-event-260715-b08218a8-0441-4596-a16e-47483d3ab57c',
+    path: '/src/IAIP/prototypes/artefacts/ep126-mila-ai-event-260715-b08218a8-0441-4596-a16e-47483d3ab57c',
+  },
   issue: 'miadisabelle/Etuaptmumk-RSM#245',
   issue_url: 'https://github.com/miadisabelle/Etuaptmumk-RSM/issues/245',
-  related_at: '2026-07-15T00:00:00Z',
+  episode: { number: 126, path: EP_PATH },
   last_sync: {
     state: 'in-sync',
     at: '2026-07-15T01:00:00Z',
@@ -35,16 +40,11 @@ const ep126Inquiry = {
 const weavePayload = {
   provider: 'jsonl',
   count: 1,
-  weaves: [
-    {
-      episode: { number: 126, slug: 'mila-ai-indigenous-gathering', path: EP_PATH },
-      inquiries: [ep126Inquiry],
-    },
-  ],
+  inquiry_weaves: [ep126Inquiry],
 };
 
 describe('getEpisodeInquiry', () => {
-  it('projects the three identities and last_sync state from the weaves contract', async () => {
+  it('projects the three identities and last_sync state from the Medicine Wheel contract', async () => {
     const fetchImpl = createInquiryFetch(weavePayload);
 
     const result = await getEpisodeInquiry(EP_PATH, {
@@ -59,7 +59,6 @@ describe('getEpisodeInquiry', () => {
       issueUrl: 'https://github.com/miadisabelle/Etuaptmumk-RSM/issues/245',
       syncState: 'in-sync',
       syncedAt: '2026-07-15T01:00:00Z',
-      relatedAt: '2026-07-15T00:00:00Z',
     });
   });
 
@@ -76,9 +75,13 @@ describe('getEpisodeInquiry', () => {
   });
 
   it('flattens weaves when episode_number matches several episodes', async () => {
+    const legacyInquiry = {
+      ...ep126Inquiry,
+      artefact: ep126Inquiry.artefact.id,
+    };
     const fetchImpl = createInquiryFetch({
       weaves: [
-        { episode: { number: 126, path: `${EP_PATH}-a` }, inquiries: [ep126Inquiry] },
+        { episode: { number: 126, path: `${EP_PATH}-a` }, inquiries: [legacyInquiry] },
         {
           episode: { number: 126, path: `${EP_PATH}-b` },
           inquiries: [{ artefact: 'ep126-second', last_sync: { state: 'stale' } }],

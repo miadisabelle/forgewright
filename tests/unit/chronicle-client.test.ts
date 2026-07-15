@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   findParentEpisode,
   getChronicleSnapshot,
+  getEpisodeInquiryPath,
 } from '../../src/lib/chronicle/client';
 
 function jsonResponse(value: unknown, status = 200): Response {
@@ -130,6 +131,17 @@ describe('getChronicleSnapshot', () => {
         [],
       ),
     ).toBeNull();
+  });
+
+  it('derives the inquiry episode path from a standard episode metadata reference', () => {
+    expect(
+      getEpisodeInquiryPath({
+        id: episodeNode.id,
+        name: episodeNode.name,
+        kind: 'chronicle_episode',
+        relativePath: episodeNode.metadata.relative_path,
+      }),
+    ).toBe('2026-07-10-episode-122');
   });
 
   it('ignores unrelated, incompatible, and unsafe references', async () => {

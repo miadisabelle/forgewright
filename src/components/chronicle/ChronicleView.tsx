@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   findParentEpisode,
+  getEpisodeInquiryPath,
   type ChronicleArtifactReference,
   type ChronicleSnapshot,
   type EpisodeInquiry,
@@ -210,7 +211,7 @@ export default function ChronicleView() {
                   {snapshot.episodes.map((episode) => (
                     <div key={episode.id} className="space-y-2">
                       <ReferenceCard reference={episode} />
-                      <EpisodeInquirySection episodePath={episode.relativePath} />
+                      <EpisodeInquirySection episodePath={getEpisodeInquiryPath(episode)} />
                     </div>
                   ))}
                 </div>
