@@ -246,3 +246,109 @@ export async function getChronicleSnapshot(
     ignoredNodeCount: nodesResponse.nodes.length - references.length,
   };
 }
+
+// ─── Inquiry Weaves (spec 09) ────────────────────────────────────────────────
+// Read-only projection of `<episode>/inquiry/weave.yaml` served by Medicine Wheel
+// at GET {MW_API_URL}/api/inquiry-weaves?episode_path=<path>. Forgewright is a pure
+// read consumer: three identities (artefact + issue + episode) + last_sync state.
+
+const ISSUE_REF_PATTERN = /^[^\s/]+\/[^\s/#]+#\d+$/;
+
+export const INQUIRY_SYNC_STATES = [
+  'in-sync',
+  'stale',
+  'never-synced',
+  'episode-copy-diverged',
+] as const;
+
+export type InquirySyncState = (typeof INQUIRY_SYNC_STATES)[number];
+
+export interface InquiryRelation {
+  artefact: string;
+  issueRef?: string;
+  issueUrl?: string;
+  syncState: InquirySyncState;
+  syncedAt?: string;
+  relatedAt?: string;
+}
+
+export interface EpisodeInquiry {
+  episodePath: string;
+  count: number;
+  inquiries: InquiryRelation[];
+}
+
+function isInquirySyncState(value: unknown): value is InquirySyncState {
+  return typeof value === 'string' && (INQUIRY_SYNC_STATES as readonly string[]).includes(value);
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function normalizeInquiryRelation(value: unknown): InquiryRelation | null {
+  if (!isRecord(value)) return null;
+
+  const artefact = optionalString(value.artefact);
+  if (!artefact) return null;
+
+  const relation: InquiryRelation = { artefact, syncState: 'never-synced' };
+
+  const issueRef = optionalString(value.issue);
+  if (issueRef && ISSUE_REF_PATTERN.test(issueRef)) relation.issueRef = issueRef;
+
+  const issueUrl = optionalString(value.issue_url);
+  if (issueUrl && isHttpUrl(issueUrl)) relation.issueUrl = issueUrl;
+
+  if (isRecord(value.last_sync)) {
+    if (isInquirySyncState(value.last_sync.state)) relation.syncState = value.last_sync.state;
+    const syncedAt = optionalString(value.last_sync.at);
+    if (syncedAt) relation.syncedAt = syncedAt;
+  }
+
+  const relatedAt = optionalString(value.related_at);
+  if (relatedAt) relation.relatedAt = relatedAt;
+
+  return relation;
+}
+
+function collectInquiryRelations(value: unknown): InquiryRelation[] {
+  if (!isRecord(value)) return [];
+
+  let raw: unknown[] = [];
+  if (Array.isArray(value.weaves)) {
+    // Grouped by episode (episode_number can match several); flatten every weave.
+    raw = value.weaves.flatMap((weave) =>
+      isRecord(weave) && Array.isArray(weave.inquiries) ? weave.inquiries : [],
+    );
+  } else if (Array.isArray(value.inquiries)) {
+    raw = value.inquiries;
+  }
+
+  return raw
+    .map((relation) => normalizeInquiryRelation(relation))
+    .filter((relation): relation is InquiryRelation => relation !== null);
+}
+
+export async function getEpisodeInquiry(
+  episodePath: string,
+  options: ChronicleClientOptions = {},
+): Promise<EpisodeInquiry> {
+  const baseUrl = resolveBaseUrl(options.baseUrl);
+  const requestOptions = {
+    baseUrl,
+    fetchImpl: options.fetchImpl ?? fetch,
+    timeoutMs: options.timeoutMs ?? 5_000,
+  };
+
+  const path = `/api/inquiry-weaves?episode_path=${encodeURIComponent(episodePath)}`;
+  const value = await fetchJson(path, requestOptions);
+  const inquiries = collectInquiryRelations(value);
+
+  return { episodePath, count: inquiries.length, inquiries };
+}

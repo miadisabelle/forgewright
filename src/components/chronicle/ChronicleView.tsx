@@ -5,6 +5,9 @@ import {
   findParentEpisode,
   type ChronicleArtifactReference,
   type ChronicleSnapshot,
+  type EpisodeInquiry,
+  type InquiryRelation,
+  type InquirySyncState,
 } from '@forgewright/lib/chronicle/client';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
 
@@ -205,7 +208,10 @@ export default function ChronicleView() {
               {snapshot.episodes.length > 0 ? (
                 <div className="space-y-3">
                   {snapshot.episodes.map((episode) => (
-                    <ReferenceCard key={episode.id} reference={episode} />
+                    <div key={episode.id} className="space-y-2">
+                      <ReferenceCard reference={episode} />
+                      <EpisodeInquirySection episodePath={episode.relativePath} />
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -248,6 +254,117 @@ export default function ChronicleView() {
         ) : null}
       </div>
     </section>
+  );
+}
+
+const SYNC_STATE_STYLES: Record<
+  InquirySyncState,
+  { glyph: string; label: string; className: string }
+> = {
+  'in-sync': {
+    glyph: '🟢',
+    label: 'in sync',
+    className: 'border-emerald-900/70 bg-emerald-950/40 text-emerald-400',
+  },
+  stale: {
+    glyph: '🟡',
+    label: 'stale',
+    className: 'border-amber-900/70 bg-amber-950/40 text-amber-400',
+  },
+  'never-synced': {
+    glyph: '⚪',
+    label: 'never synced',
+    className: 'border-neutral-700 bg-neutral-900/60 text-neutral-400',
+  },
+  'episode-copy-diverged': {
+    glyph: '🔴',
+    label: 'copy diverged',
+    className: 'border-red-900/70 bg-red-950/40 text-red-400',
+  },
+};
+
+function InquiryRow({ relation }: { relation: InquiryRelation }) {
+  const sync = SYNC_STATE_STYLES[relation.syncState];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded border border-neutral-800 bg-neutral-950/40 px-3 py-2">
+      <span className="text-sm" aria-hidden="true">🧬</span>
+      <code
+        className="min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-300"
+        title={relation.artefact}
+      >
+        {relation.artefact}
+      </code>
+      {relation.issueRef ? (
+        relation.issueUrl ? (
+          <a
+            href={relation.issueUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="rounded border border-cyan-900/60 bg-cyan-950/30 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300 transition-colors hover:border-cyan-700 hover:text-cyan-200"
+          >
+            {relation.issueRef}
+          </a>
+        ) : (
+          <span className="rounded border border-neutral-700 bg-neutral-900 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400">
+            {relation.issueRef}
+          </span>
+        )
+      ) : (
+        <span className="rounded border border-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-600">
+          no issue
+        </span>
+      )}
+      <span
+        className={`rounded border px-1.5 py-0.5 text-[10px] ${sync.className}`}
+        title={relation.syncedAt ? `last sync ${relation.syncedAt}` : undefined}
+      >
+        {sync.glyph} {sync.label}
+      </span>
+    </div>
+  );
+}
+
+function EpisodeInquirySection({ episodePath }: { episodePath: string }) {
+  const [inquiry, setInquiry] = useState<EpisodeInquiry | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadInquiry() {
+      try {
+        const response = await fetch(
+          `/api/chronicle/inquiry?episode_path=${encodeURIComponent(episodePath)}`,
+          {
+            cache: 'no-store',
+            headers: { accept: 'application/json' },
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) return;
+        const body = (await response.json()) as { data: EpisodeInquiry | null };
+        if (!controller.signal.aborted && body.data) setInquiry(body.data);
+      } catch {
+        // Inquiry weaves are an additive surface; upstream trouble degrades to no section.
+      }
+    }
+
+    void loadInquiry();
+    return () => controller.abort();
+  }, [episodePath]);
+
+  // count 0 (or unreachable) means no inquiry section — never an error surface.
+  if (!inquiry || inquiry.count === 0) return null;
+
+  return (
+    <div className="ml-6 space-y-1.5 border-l border-neutral-800 pl-4">
+      <p className="text-[10px] uppercase tracking-wide text-neutral-500">
+        Inquiry · {inquiry.count}
+      </p>
+      {inquiry.inquiries.map((relation, index) => (
+        <InquiryRow key={`${relation.artefact}-${index}`} relation={relation} />
+      ))}
+    </div>
   );
 }
 
