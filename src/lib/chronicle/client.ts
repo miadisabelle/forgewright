@@ -359,3 +359,146 @@ export async function getEpisodeInquiry(
 
   return { episodePath, count: inquiries.length, inquiries };
 }
+
+// ─── Plan Perspectives (spec 10) ─────────────────────────────────────────────
+// Read-only projection of PerspectiveRecord served by Medicine Wheel at
+// GET {MW_API_URL}/api/plan-perspectives. One perspective may relate to many
+// episode paths and appears beside each without forking its identity; the
+// session file stays authoritative and ForgeWright never registers or mutates.
+
+const PERSPECTIVE_ID_PREFIX = 'plan-perspective:';
+const PERSPECTIVE_BODY_LIMIT = 64 * 1024;
+
+export interface PlanPerspective {
+  id: string;
+  sessionId: string;
+  planFilename: string;
+  title: string;
+  bodyMarkdown: string;
+  miaContext?: string;
+  episodePaths: string[];
+  registeredAt?: string;
+  updatedAt?: string;
+  generator?: string;
+}
+
+export interface PlanPerspectives {
+  count: number;
+  perspectives: PlanPerspective[];
+}
+
+export interface PlanPerspectiveQuery {
+  episodePath?: string;
+  sessionId?: string;
+  id?: string;
+}
+
+function normalizePlanPerspective(value: unknown): PlanPerspective | null {
+  if (!isRecord(value)) return null;
+
+  const id = optionalString(value.id);
+  if (!id || !id.startsWith(PERSPECTIVE_ID_PREFIX)) return null;
+  if (!isRecord(value.plan) || !isRecord(value.narrative)) return null;
+
+  const sessionId = optionalString(value.plan.session_id);
+  const planFilename = optionalString(value.plan.plan_filename);
+  const title = optionalString(value.narrative.title);
+  const body = optionalString(value.narrative.body_markdown);
+  if (!sessionId || !planFilename || !title || !body) return null;
+
+  const perspective: PlanPerspective = {
+    id,
+    sessionId,
+    planFilename,
+    title,
+    bodyMarkdown: body.length > PERSPECTIVE_BODY_LIMIT ? body.slice(0, PERSPECTIVE_BODY_LIMIT) : body,
+    episodePaths: [],
+  };
+
+  if (Array.isArray(value.episodes)) {
+    const seen = new Set<string>();
+    for (const episode of value.episodes) {
+      const path = isRecord(episode) ? episode.path : undefined;
+      if (isSafeRelativePath(path) && !seen.has(path)) {
+        seen.add(path);
+        perspective.episodePaths.push(path);
+      }
+    }
+  }
+
+  const miaContext = optionalString(value.narrative.mia_context);
+  if (miaContext) perspective.miaContext = miaContext;
+
+  if (isRecord(value.source)) {
+    const registeredAt = optionalString(value.source.registered_at);
+    const updatedAt = optionalString(value.source.updated_at);
+    if (registeredAt) perspective.registeredAt = registeredAt;
+    if (updatedAt) perspective.updatedAt = updatedAt;
+    if (isRecord(value.source.generator)) {
+      const generator = [
+        optionalString(value.source.generator.system),
+        optionalString(value.source.generator.model),
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(' · ');
+      if (generator) perspective.generator = generator;
+    }
+  }
+
+  return perspective;
+}
+
+function collectPlanPerspectives(value: unknown): PlanPerspective[] {
+  if (!isRecord(value)) return [];
+
+  let raw: unknown[] = [];
+  if (Array.isArray(value.plan_perspectives)) {
+    raw = value.plan_perspectives;
+  } else if (Array.isArray(value.perspectives)) {
+    raw = value.perspectives;
+  } else if (isRecord(value.record)) {
+    raw = [value.record];
+  }
+
+  return raw
+    .map((record) => normalizePlanPerspective(record))
+    .filter((perspective): perspective is PlanPerspective => perspective !== null);
+}
+
+/** Match a registered perspective to a structured-plan card by plan filename. */
+export function perspectiveMatchesPlan(
+  perspective: PlanPerspective,
+  plan: ChronicleArtifactReference,
+): boolean {
+  const cardBase = plan.relativePath.split('/').pop()?.replace(/\.md$/, '');
+  const recordBase = perspective.planFilename.replace(/\.md$/, '');
+  return Boolean(cardBase) && cardBase === recordBase;
+}
+
+export async function getPlanPerspectives(
+  query: PlanPerspectiveQuery,
+  options: ChronicleClientOptions = {},
+): Promise<PlanPerspectives> {
+  const baseUrl = resolveBaseUrl(options.baseUrl);
+  const requestOptions = {
+    baseUrl,
+    fetchImpl: options.fetchImpl ?? fetch,
+    timeoutMs: options.timeoutMs ?? 5_000,
+  };
+
+  const params = new URLSearchParams();
+  if (query.episodePath) {
+    params.set('episode_path', query.episodePath);
+  } else if (query.sessionId) {
+    params.set('session_id', query.sessionId);
+  } else if (query.id) {
+    params.set('id', query.id);
+  } else {
+    throw new Error('plan perspectives query needs episode_path, session_id, or id');
+  }
+
+  const value = await fetchJson(`/api/plan-perspectives?${params.toString()}`, requestOptions);
+  const perspectives = collectPlanPerspectives(value);
+
+  return { count: perspectives.length, perspectives };
+}

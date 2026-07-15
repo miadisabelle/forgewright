@@ -4,11 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   findParentEpisode,
   getEpisodeInquiryPath,
+  perspectiveMatchesPlan,
   type ChronicleArtifactReference,
   type ChronicleSnapshot,
   type EpisodeInquiry,
   type InquiryRelation,
   type InquirySyncState,
+  type PlanPerspective,
+  type PlanPerspectives,
 } from '@forgewright/lib/chronicle/client';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
 
@@ -212,6 +215,7 @@ export default function ChronicleView() {
                     <div key={episode.id} className="space-y-2">
                       <ReferenceCard reference={episode} />
                       <EpisodeInquirySection episodePath={getEpisodeInquiryPath(episode)} />
+                      <EpisodePerspectiveSection episodePath={getEpisodeInquiryPath(episode)} />
                     </div>
                   ))}
                 </div>
@@ -231,13 +235,15 @@ export default function ChronicleView() {
               </div>
               {snapshot.structuredPlans.length > 0 ? (
                 <div className="space-y-3">
-                  {snapshot.structuredPlans.map((plan) => (
-                    <ReferenceCard
-                      key={plan.id}
-                      reference={plan}
-                      parentEpisode={findParentEpisode(plan, snapshot.episodes)}
-                    />
-                  ))}
+                  {snapshot.structuredPlans.map((plan) => {
+                    const parentEpisode = findParentEpisode(plan, snapshot.episodes);
+                    return (
+                      <div key={plan.id} className="space-y-2">
+                        <ReferenceCard reference={plan} parentEpisode={parentEpisode} />
+                        <PlanPerspectiveSection plan={plan} parentEpisode={parentEpisode} />
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-xs text-neutral-600">
@@ -364,6 +370,125 @@ function EpisodeInquirySection({ episodePath }: { episodePath: string }) {
       </p>
       {inquiry.inquiries.map((relation, index) => (
         <InquiryRow key={`${relation.artefact}-${index}`} relation={relation} />
+      ))}
+    </div>
+  );
+}
+
+const PERSPECTIVE_EXCERPT_LIMIT = 240;
+
+function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
+  const timestamp = formatTimestamp(perspective.updatedAt ?? perspective.registeredAt);
+  const excerpt =
+    perspective.bodyMarkdown.length > PERSPECTIVE_EXCERPT_LIMIT
+      ? `${perspective.bodyMarkdown.slice(0, PERSPECTIVE_EXCERPT_LIMIT).trimEnd()}…`
+      : perspective.bodyMarkdown;
+
+  return (
+    <details className="group rounded border border-pink-900/40 bg-pink-950/10 px-3 py-2">
+      <summary className="cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-700">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm" aria-hidden="true">🌸</span>
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-pink-200" title={perspective.title}>
+            {perspective.title}
+          </span>
+          <span className="rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 group-open:hidden">
+            expand
+          </span>
+          <span className="hidden rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 group-open:inline">
+            collapse
+          </span>
+        </span>
+        <span className="mt-1 block text-[11px] leading-relaxed text-neutral-400 group-open:hidden">
+          {excerpt}
+        </span>
+      </summary>
+      <div className="mt-2 whitespace-pre-wrap border-t border-pink-900/30 pt-2 text-[11px] leading-relaxed text-neutral-300">
+        {perspective.bodyMarkdown}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
+        <span className="font-mono">{perspective.planFilename}</span>
+        {perspective.generator ? <span>{perspective.generator}</span> : null}
+        {timestamp ? <span>Updated {timestamp}</span> : null}
+      </div>
+    </details>
+  );
+}
+
+function usePlanPerspectives(episodePath: string | null): PlanPerspectives | null {
+  const [perspectives, setPerspectives] = useState<PlanPerspectives | null>(null);
+
+  useEffect(() => {
+    if (!episodePath) return;
+    const controller = new AbortController();
+
+    async function loadPerspectives() {
+      try {
+        const response = await fetch(
+          `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath!)}`,
+          {
+            cache: 'no-store',
+            headers: { accept: 'application/json' },
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) return;
+        const body = (await response.json()) as { data: PlanPerspectives | null };
+        if (!controller.signal.aborted && body.data) setPerspectives(body.data);
+      } catch {
+        // Perspectives are an additive surface; upstream trouble degrades to no section.
+      }
+    }
+
+    void loadPerspectives();
+    return () => controller.abort();
+  }, [episodePath]);
+
+  return perspectives;
+}
+
+function EpisodePerspectiveSection({ episodePath }: { episodePath: string }) {
+  const perspectives = usePlanPerspectives(episodePath);
+
+  // count 0 (or unreachable) means no perspective section — never an error surface.
+  if (!perspectives || perspectives.count === 0) return null;
+
+  return (
+    <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
+      <p className="text-[10px] uppercase tracking-wide text-pink-500/80">
+        Miette perspective · {perspectives.count}
+      </p>
+      {perspectives.perspectives.map((perspective) => (
+        <PerspectiveRow key={perspective.id} perspective={perspective} />
+      ))}
+    </div>
+  );
+}
+
+function PlanPerspectiveSection({
+  plan,
+  parentEpisode,
+}: {
+  plan: ChronicleArtifactReference;
+  parentEpisode: ChronicleArtifactReference | null;
+}) {
+  const perspectives = usePlanPerspectives(
+    parentEpisode ? getEpisodeInquiryPath(parentEpisode) : null,
+  );
+
+  const matching = perspectives?.perspectives.filter((perspective) =>
+    perspectiveMatchesPlan(perspective, plan),
+  );
+
+  if (!matching || matching.length === 0) return null;
+
+  return (
+    <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
+      <p className="text-[10px] uppercase tracking-wide text-pink-500/80">
+        Miette perspective on this plan
+      </p>
+      {matching.map((perspective) => (
+        <PerspectiveRow key={perspective.id} perspective={perspective} />
       ))}
     </div>
   );
