@@ -73,6 +73,7 @@ describe('getPlanPerspectives', () => {
       id: `plan-perspective:${SESSION_ID}`,
       sessionId: SESSION_ID,
       planFilename: 'mission-plan-the-evolution-abundant-quail',
+      planSha256: 'deadbeef',
       title: "🌸 Miette's Perspective — The Carrier Learns to Travel",
       miaContext: 'Desired outcome: PerspectiveRecord carriage.',
       generator: 'claude-code · sonnet',
@@ -182,20 +183,52 @@ describe('perspectiveMatchesPlan', () => {
       '2026-07-13-episode-130-iaip-inquiry-relational-sync-to-miadi-chronicle/plans/mission-plan-the-evolution-abundant-quail.md',
   };
 
-  it('matches on plan filename with or without the .md suffix', () => {
-    const perspective = {
-      id: `plan-perspective:${SESSION_ID}`,
-      sessionId: SESSION_ID,
-      planFilename: 'mission-plan-the-evolution-abundant-quail',
-      title: 't',
-      bodyMarkdown: 'b',
-      episodePaths: [],
-    };
+  const perspective = {
+    id: `plan-perspective:${SESSION_ID}`,
+    sessionId: SESSION_ID,
+    planFilename: 'mission-plan-the-evolution-abundant-quail',
+    title: 't',
+    bodyMarkdown: 'b',
+    episodePaths: [],
+  };
 
+  it('matches on plan filename with or without the .md suffix', () => {
     expect(perspectiveMatchesPlan(perspective, planCard)).toBe(true);
     expect(
       perspectiveMatchesPlan({ ...perspective, planFilename: 'mission-plan-the-evolution-abundant-quail.md' }, planCard),
     ).toBe(true);
     expect(perspectiveMatchesPlan({ ...perspective, planFilename: 'another-plan' }, planCard)).toBe(false);
+  });
+
+  it('prefers session_id when both sides carry it — decisive over filename', () => {
+    const keyedCard = { ...planCard, sessionId: SESSION_ID };
+
+    // Same session wins even when filenames disagree.
+    expect(
+      perspectiveMatchesPlan({ ...perspective, planFilename: 'renamed-plan' }, keyedCard),
+    ).toBe(true);
+    // Different session refuses even when filenames collide.
+    expect(
+      perspectiveMatchesPlan(
+        { ...perspective, sessionId: 'another-session' },
+        keyedCard,
+      ),
+    ).toBe(false);
+  });
+
+  it('prefers plan_sha256 when session ids are unavailable on the card', () => {
+    const shaCard = { ...planCard, planSha256: 'deadbeef' };
+
+    expect(
+      perspectiveMatchesPlan(
+        { ...perspective, planSha256: 'deadbeef', planFilename: 'renamed-plan' },
+        shaCard,
+      ),
+    ).toBe(true);
+    expect(
+      perspectiveMatchesPlan({ ...perspective, planSha256: 'feedface' }, shaCard),
+    ).toBe(false);
+    // A perspective without a sha falls through to the filename comparison.
+    expect(perspectiveMatchesPlan(perspective, shaCard)).toBe(true);
   });
 });

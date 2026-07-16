@@ -99,6 +99,24 @@ describe('getEpisodeInquiry', () => {
     expect(result.inquiries[1].syncState).toBe('stale');
   });
 
+  it('projects every registered weave when no episode filter is given', async () => {
+    const fetchImpl = createInquiryFetch({
+      provider: 'jsonl',
+      count: 2,
+      inquiry_weaves: [ep126Inquiry, { ...ep126Inquiry, artefact: { id: 'ep128-second' } }],
+    });
+
+    const result = await getEpisodeInquiry(null, {
+      baseUrl: 'http://192.168.2.30:3940',
+      fetchImpl,
+    });
+
+    const calledUrl = String((fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0]);
+    expect(calledUrl).toBe('http://192.168.2.30:3940/api/inquiry-weaves');
+    expect(result.episodePath).toBeNull();
+    expect(result.count).toBe(2);
+  });
+
   it('treats an empty weave list as count 0 rather than an error', async () => {
     const fetchImpl = createInquiryFetch({ provider: 'jsonl', count: 0, weaves: [] });
 

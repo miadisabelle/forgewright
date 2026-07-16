@@ -53,6 +53,10 @@ export interface ChronicleArtifactReference {
   direction?: Direction;
   createdAt?: string;
   updatedAt?: string;
+  /** Session that authored the plan (metadata.source_session). */
+  sessionId?: string;
+  /** SHA-256 of the plan file at registration (metadata.source_sha256). */
+  planSha256?: string;
 }
 
 export interface ChronicleSnapshot {
@@ -88,6 +92,28 @@ function resolveBaseUrl(value?: string): string {
   }
 
   return parsed.origin;
+}
+
+export interface ChronicleSourceInfo {
+  service: 'medicine-wheel';
+  baseUrl: string | null;
+  configError?: string;
+}
+
+/**
+ * Resolve the upstream identity without throwing, so API proxies can report
+ * WHICH Medicine Wheel they failed to reach (or that MW_API_URL is misconfigured).
+ */
+export function describeChronicleSource(baseUrl?: string): ChronicleSourceInfo {
+  try {
+    return { service: 'medicine-wheel', baseUrl: resolveBaseUrl(baseUrl) };
+  } catch (error) {
+    return {
+      service: 'medicine-wheel',
+      baseUrl: null,
+      configError: error instanceof Error ? error.message : 'invalid MW_API_URL',
+    };
+  }
 }
 
 async function fetchJson(
@@ -159,6 +185,8 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
   const status = optionalString(node.metadata.status);
   const createdAt = optionalString(node.created_at);
   const updatedAt = optionalString(node.updated_at);
+  const sessionId = optionalString(node.metadata.source_session);
+  const planSha256 = optionalString(node.metadata.source_sha256);
 
   if (description) reference.description = description;
   if (parentId) reference.parentId = parentId;
@@ -169,6 +197,8 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
   if (isDirection(node.direction)) reference.direction = node.direction;
   if (createdAt) reference.createdAt = createdAt;
   if (updatedAt) reference.updatedAt = updatedAt;
+  if (sessionId) reference.sessionId = sessionId;
+  if (planSha256) reference.planSha256 = planSha256;
 
   return reference;
 }
@@ -277,7 +307,8 @@ export interface InquiryRelation {
 }
 
 export interface EpisodeInquiry {
-  episodePath: string;
+  /** null when the projection spans every registered weave (no episode filter). */
+  episodePath: string | null;
   count: number;
   inquiries: InquiryRelation[];
 }
@@ -343,7 +374,7 @@ function collectInquiryRelations(value: unknown): InquiryRelation[] {
 }
 
 export async function getEpisodeInquiry(
-  episodePath: string,
+  episodePath: string | null,
   options: ChronicleClientOptions = {},
 ): Promise<EpisodeInquiry> {
   const baseUrl = resolveBaseUrl(options.baseUrl);
@@ -353,7 +384,9 @@ export async function getEpisodeInquiry(
     timeoutMs: options.timeoutMs ?? 5_000,
   };
 
-  const path = `/api/inquiry-weaves?episode_path=${encodeURIComponent(episodePath)}`;
+  const path = episodePath
+    ? `/api/inquiry-weaves?episode_path=${encodeURIComponent(episodePath)}`
+    : '/api/inquiry-weaves';
   const value = await fetchJson(path, requestOptions);
   const inquiries = collectInquiryRelations(value);
 
@@ -373,6 +406,7 @@ export interface PlanPerspective {
   id: string;
   sessionId: string;
   planFilename: string;
+  planSha256?: string;
   title: string;
   bodyMarkdown: string;
   miaContext?: string;
@@ -414,6 +448,9 @@ function normalizePlanPerspective(value: unknown): PlanPerspective | null {
     bodyMarkdown: body.length > PERSPECTIVE_BODY_LIMIT ? body.slice(0, PERSPECTIVE_BODY_LIMIT) : body,
     episodePaths: [],
   };
+
+  const planSha256 = optionalString(value.plan.plan_sha256);
+  if (planSha256) perspective.planSha256 = planSha256;
 
   if (Array.isArray(value.episodes)) {
     const seen = new Set<string>();
@@ -465,11 +502,22 @@ function collectPlanPerspectives(value: unknown): PlanPerspective[] {
     .filter((perspective): perspective is PlanPerspective => perspective !== null);
 }
 
-/** Match a registered perspective to a structured-plan card by plan filename. */
+/**
+ * Match a registered perspective to a structured-plan card.
+ * Identity keys decide when both sides carry them: session_id first, then
+ * plan_sha256. Filename comparison is the last resort — generic plan names
+ * can collide across episodes, so it never overrides a strong-key verdict.
+ */
 export function perspectiveMatchesPlan(
   perspective: PlanPerspective,
   plan: ChronicleArtifactReference,
 ): boolean {
+  if (plan.sessionId && perspective.sessionId) {
+    return plan.sessionId === perspective.sessionId;
+  }
+  if (plan.planSha256 && perspective.planSha256) {
+    return plan.planSha256 === perspective.planSha256;
+  }
   const cardBase = plan.relativePath.split('/').pop()?.replace(/\.md$/, '');
   const recordBase = perspective.planFilename.replace(/\.md$/, '');
   return Boolean(cardBase) && cardBase === recordBase;

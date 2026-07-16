@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  describeChronicleSource,
   findParentEpisode,
   getChronicleSnapshot,
   getEpisodeInquiryPath,
@@ -68,6 +69,8 @@ describe('getChronicleSnapshot', () => {
         parent_id: episodeNode.id,
         goal_id: 'goal:plan-insight',
         goal_summary: 'Mia overview + Miette perspective + source trace',
+        source_session: 'f994af2d-2400-4b08-9060-55027d68cc8e',
+        source_sha256: 'cafe1234',
       },
     };
     const machineNode = {
@@ -108,6 +111,8 @@ describe('getChronicleSnapshot', () => {
         id: 'plan:one',
         goalId: 'goal:plan-insight',
         goalSummary: 'Mia overview + Miette perspective + source trace',
+        sessionId: 'f994af2d-2400-4b08-9060-55027d68cc8e',
+        planSha256: 'cafe1234',
       }),
     ]);
     expect(findParentEpisode(snapshot.structuredPlans[0], snapshot.episodes)?.id).toBe(
@@ -182,5 +187,21 @@ describe('getChronicleSnapshot', () => {
     await expect(getChronicleSnapshot({ fetchImpl })).rejects.toThrow(
       'Medicine Wheel nodes response is malformed',
     );
+  });
+});
+
+describe('describeChronicleSource', () => {
+  it('resolves the upstream identity without throwing', () => {
+    expect(describeChronicleSource('http://192.168.2.30:3940/')).toEqual({
+      service: 'medicine-wheel',
+      baseUrl: 'http://192.168.2.30:3940',
+    });
+  });
+
+  it('reports misconfiguration instead of throwing', () => {
+    const source = describeChronicleSource('http://192.168.2.30:3940/some/path');
+
+    expect(source.baseUrl).toBeNull();
+    expect(source.configError).toContain('MW_API_URL');
   });
 });
