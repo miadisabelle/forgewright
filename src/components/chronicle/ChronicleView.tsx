@@ -7,6 +7,7 @@ import {
   perspectiveMatchesPlan,
   type ChronicleArtifactReference,
   type ChronicleSnapshot,
+  type ChronicleSourceInfo,
   type EpisodeInquiry,
   type InquiryRelation,
   type InquirySyncState,
@@ -14,10 +15,12 @@ import {
   type PlanPerspectives,
 } from '@forgewright/lib/chronicle/client';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
+import Markdown from './Markdown';
 
 interface ChronicleApiResponse {
   data: ChronicleSnapshot | null;
   error?: string;
+  source?: ChronicleSourceInfo;
 }
 
 function formatTimestamp(value?: string): string | null {
@@ -98,6 +101,7 @@ function LoadingState() {
 export default function ChronicleView() {
   const [snapshot, setSnapshot] = useState<ChronicleSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorSource, setErrorSource] = useState<ChronicleSourceInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -111,6 +115,7 @@ export default function ChronicleView() {
     async function loadChronicle() {
       setIsLoading(true);
       setError(null);
+      setErrorSource(null);
 
       try {
         const response = await fetch('/api/chronicle', {
@@ -121,6 +126,7 @@ export default function ChronicleView() {
         const body = await response.json() as ChronicleApiResponse;
 
         if (!response.ok || !body.data) {
+          if (body.source) setErrorSource(body.source);
           throw new Error(body.error ?? `Chronicle request returned HTTP ${response.status}`);
         }
 
@@ -170,6 +176,13 @@ export default function ChronicleView() {
           <div className="rounded-lg border border-red-900/70 bg-red-950/30 p-4" role="alert">
             <p className="text-sm text-red-300">Chronicle unavailable</p>
             <p className="mt-1 text-xs text-red-400/70">{error}</p>
+            {errorSource ? (
+              <p className="mt-2 font-mono text-[10px] text-red-400/60">
+                {errorSource.baseUrl
+                  ? `upstream: ${errorSource.service} · ${errorSource.baseUrl}`
+                  : `misconfigured: ${errorSource.configError ?? 'MW_API_URL is invalid'}`}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={refresh}
@@ -180,9 +193,12 @@ export default function ChronicleView() {
           </div>
         ) : snapshot ? (
           <div className="mx-auto max-w-4xl space-y-6">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <SourceBanner source={snapshot.source} />
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
+              <InquiryWeaveMetric reloadKey={reloadKey} />
               <Metric label="State machines" value={snapshot.stateMachines.length} deferred />
             </div>
 
@@ -207,15 +223,21 @@ export default function ChronicleView() {
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Registered episodes
                 </h3>
-                <span className="text-[10px] text-neutral-600">{snapshot.source.baseUrl}</span>
+                <span className="text-[10px] text-neutral-600">Medicine Wheel references</span>
               </div>
               {snapshot.episodes.length > 0 ? (
                 <div className="space-y-3">
                   {snapshot.episodes.map((episode) => (
                     <div key={episode.id} className="space-y-2">
                       <ReferenceCard reference={episode} />
-                      <EpisodeInquirySection episodePath={getEpisodeInquiryPath(episode)} />
-                      <EpisodePerspectiveSection episodePath={getEpisodeInquiryPath(episode)} />
+                      <EpisodeInquirySection
+                        episodePath={getEpisodeInquiryPath(episode)}
+                        reloadKey={reloadKey}
+                      />
+                      <EpisodePerspectiveSection
+                        episodePath={getEpisodeInquiryPath(episode)}
+                        reloadKey={reloadKey}
+                      />
                     </div>
                   ))}
                 </div>
@@ -240,7 +262,11 @@ export default function ChronicleView() {
                     return (
                       <div key={plan.id} className="space-y-2">
                         <ReferenceCard reference={plan} parentEpisode={parentEpisode} />
-                        <PlanPerspectiveSection plan={plan} parentEpisode={parentEpisode} />
+                        <PlanPerspectiveSection
+                          plan={plan}
+                          parentEpisode={parentEpisode}
+                          reloadKey={reloadKey}
+                        />
                       </div>
                     );
                   })}
@@ -332,43 +358,153 @@ function InquiryRow({ relation }: { relation: InquiryRelation }) {
   );
 }
 
-function EpisodeInquirySection({ episodePath }: { episodePath: string }) {
-  const [inquiry, setInquiry] = useState<EpisodeInquiry | null>(null);
+// ─── Per-section lifecycle ───────────────────────────────────────────────────
+// Every nested Chronicle section moves through loading | error | empty | ready.
+// Empty (count 0) stays quiet; error surfaces with its own retry, so an
+// unreachable upstream never masquerades as "nothing registered".
+
+type SectionStatus = 'loading' | 'error' | 'empty' | 'ready';
+
+interface SectionState<T> {
+  status: SectionStatus;
+  data: T | null;
+  error: string | null;
+  retry: () => void;
+}
+
+function useChronicleSection<T>(
+  url: string | null,
+  reloadKey: number,
+  isEmpty: (data: T) => boolean,
+): SectionState<T> {
+  const [state, setState] = useState<Omit<SectionState<T>, 'retry'>>({
+    status: 'loading',
+    data: null,
+    error: null,
+  });
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (!url) {
+      setState({ status: 'empty', data: null, error: null });
+      return;
+    }
 
-    async function loadInquiry() {
+    const controller = new AbortController();
+    setState({ status: 'loading', data: null, error: null });
+
+    async function load() {
       try {
-        const response = await fetch(
-          `/api/chronicle/inquiry?episode_path=${encodeURIComponent(episodePath)}`,
-          {
-            cache: 'no-store',
-            headers: { accept: 'application/json' },
-            signal: controller.signal,
-          },
-        );
-        if (!response.ok) return;
-        const body = (await response.json()) as { data: EpisodeInquiry | null };
-        if (!controller.signal.aborted && body.data) setInquiry(body.data);
-      } catch {
-        // Inquiry weaves are an additive surface; upstream trouble degrades to no section.
+        const response = await fetch(url!, {
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as { data: T | null; error?: string };
+        if (!response.ok || body.data == null) {
+          throw new Error(body.error ?? `HTTP ${response.status}`);
+        }
+        if (controller.signal.aborted) return;
+        setState({
+          status: isEmpty(body.data) ? 'empty' : 'ready',
+          data: body.data,
+          error: null,
+        });
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setState({
+          status: 'error',
+          data: null,
+          error: loadError instanceof Error ? loadError.message : 'section unavailable',
+        });
       }
     }
 
-    void loadInquiry();
+    void load();
     return () => controller.abort();
-  }, [episodePath]);
+    // isEmpty is a module-level predicate; listing it keeps the linter honest.
+  }, [url, reloadKey, attempt, isEmpty]);
 
-  // count 0 (or unreachable) means no inquiry section — never an error surface.
-  if (!inquiry || inquiry.count === 0) return null;
+  return { ...state, retry };
+}
+
+const inquiryIsEmpty = (data: EpisodeInquiry) => data.count === 0;
+const perspectivesAreEmpty = (data: PlanPerspectives) => data.count === 0;
+const neverEmpty = () => false;
+
+function SectionLoading({ label }: { label: string }) {
+  return (
+    <p
+      className="ml-6 animate-pulse border-l border-neutral-800 pl-4 text-[10px] uppercase tracking-wide text-neutral-600"
+      role="status"
+    >
+      {label}…
+    </p>
+  );
+}
+
+function SectionError({
+  label,
+  message,
+  onRetry,
+}: {
+  label: string;
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="ml-6 border-l border-red-900/60 pl-4" role="alert">
+      <div className="flex flex-wrap items-center gap-2 rounded border border-red-900/50 bg-red-950/20 px-3 py-2">
+        <span className="text-[10px] uppercase tracking-wide text-red-400">{label} unavailable</span>
+        <span className="min-w-0 flex-1 truncate text-[10px] text-red-400/60" title={message}>
+          {message}
+        </span>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded border border-red-800 px-2 py-0.5 text-[10px] text-red-300 transition-colors hover:border-red-600"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EpisodeInquirySection({
+  episodePath,
+  reloadKey,
+}: {
+  episodePath: string;
+  reloadKey: number;
+}) {
+  const section = useChronicleSection<EpisodeInquiry>(
+    `/api/chronicle/inquiry?episode_path=${encodeURIComponent(episodePath)}`,
+    reloadKey,
+    inquiryIsEmpty,
+  );
+
+  if (section.status === 'loading') return <SectionLoading label="Inquiry" />;
+  if (section.status === 'error') {
+    return (
+      <SectionError
+        label="Inquiry"
+        message={section.error ?? 'upstream unavailable'}
+        onRetry={section.retry}
+      />
+    );
+  }
+  // count 0 renders nothing — silence here means "no weaves", never "broken".
+  if (section.status === 'empty' || !section.data) return null;
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-neutral-800 pl-4">
       <p className="text-[10px] uppercase tracking-wide text-neutral-500">
-        Inquiry · {inquiry.count}
+        Inquiry · {section.data.count}
       </p>
-      {inquiry.inquiries.map((relation, index) => (
+      {section.data.inquiries.map((relation, index) => (
         <InquiryRow key={`${relation.artefact}-${index}`} relation={relation} />
       ))}
     </div>
@@ -403,9 +539,15 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
           {excerpt}
         </span>
       </summary>
-      <div className="mt-2 whitespace-pre-wrap border-t border-pink-900/30 pt-2 text-[11px] leading-relaxed text-neutral-300">
-        {perspective.bodyMarkdown}
+      <div className="mt-2 border-t border-pink-900/30 pt-2">
+        <Markdown>{perspective.bodyMarkdown}</Markdown>
       </div>
+      {perspective.miaContext ? (
+        <div className="mt-2 rounded border border-cyan-900/40 bg-cyan-950/10 px-2.5 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-cyan-500">🧠 Mia context</p>
+          <Markdown className="mt-1">{perspective.miaContext}</Markdown>
+        </div>
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
         <span className="font-mono">{perspective.planFilename}</span>
         {perspective.generator ? <span>{perspective.generator}</span> : null}
@@ -415,50 +557,47 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
   );
 }
 
-function usePlanPerspectives(episodePath: string | null): PlanPerspectives | null {
-  const [perspectives, setPerspectives] = useState<PlanPerspectives | null>(null);
-
-  useEffect(() => {
-    if (!episodePath) return;
-    const controller = new AbortController();
-
-    async function loadPerspectives() {
-      try {
-        const response = await fetch(
-          `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath!)}`,
-          {
-            cache: 'no-store',
-            headers: { accept: 'application/json' },
-            signal: controller.signal,
-          },
-        );
-        if (!response.ok) return;
-        const body = (await response.json()) as { data: PlanPerspectives | null };
-        if (!controller.signal.aborted && body.data) setPerspectives(body.data);
-      } catch {
-        // Perspectives are an additive surface; upstream trouble degrades to no section.
-      }
-    }
-
-    void loadPerspectives();
-    return () => controller.abort();
-  }, [episodePath]);
-
-  return perspectives;
+function usePlanPerspectiveSection(
+  episodePath: string | null,
+  reloadKey: number,
+): SectionState<PlanPerspectives> {
+  return useChronicleSection<PlanPerspectives>(
+    episodePath
+      ? `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath)}`
+      : null,
+    reloadKey,
+    perspectivesAreEmpty,
+  );
 }
 
-function EpisodePerspectiveSection({ episodePath }: { episodePath: string }) {
-  const perspectives = usePlanPerspectives(episodePath);
+function EpisodePerspectiveSection({
+  episodePath,
+  reloadKey,
+}: {
+  episodePath: string;
+  reloadKey: number;
+}) {
+  const section = usePlanPerspectiveSection(episodePath, reloadKey);
 
-  // count 0 (or unreachable) means no perspective section — never an error surface.
-  if (!perspectives || perspectives.count === 0) return null;
+  if (section.status === 'loading') return <SectionLoading label="Miette perspective" />;
+  if (section.status === 'error') {
+    return (
+      <SectionError
+        label="Miette perspective"
+        message={section.error ?? 'upstream unavailable'}
+        onRetry={section.retry}
+      />
+    );
+  }
+  // count 0 renders nothing — silence here means "no perspectives", never "broken".
+  if (section.status === 'empty' || !section.data) return null;
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
       <p className="text-[10px] uppercase tracking-wide text-pink-500/80">
-        Miette perspective · {perspectives.count}
+        Miette perspective · {section.data.count}
       </p>
-      {perspectives.perspectives.map((perspective) => (
+      {section.data.perspectives.map((perspective) => (
         <PerspectiveRow key={perspective.id} perspective={perspective} />
       ))}
     </div>
@@ -468,19 +607,33 @@ function EpisodePerspectiveSection({ episodePath }: { episodePath: string }) {
 function PlanPerspectiveSection({
   plan,
   parentEpisode,
+  reloadKey,
 }: {
   plan: ChronicleArtifactReference;
   parentEpisode: ChronicleArtifactReference | null;
+  reloadKey: number;
 }) {
-  const perspectives = usePlanPerspectives(
+  const section = usePlanPerspectiveSection(
     parentEpisode ? getEpisodeInquiryPath(parentEpisode) : null,
+    reloadKey,
   );
 
-  const matching = perspectives?.perspectives.filter((perspective) =>
+  if (section.status === 'loading') return <SectionLoading label="Miette perspective" />;
+  if (section.status === 'error') {
+    return (
+      <SectionError
+        label="Miette perspective"
+        message={section.error ?? 'upstream unavailable'}
+        onRetry={section.retry}
+      />
+    );
+  }
+  if (section.status === 'empty' || !section.data) return null;
+
+  const matching = section.data.perspectives.filter((perspective) =>
     perspectiveMatchesPlan(perspective, plan),
   );
-
-  if (!matching || matching.length === 0) return null;
+  if (matching.length === 0) return null;
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
@@ -494,9 +647,63 @@ function PlanPerspectiveSection({
   );
 }
 
-function Metric({ label, value, deferred = false }: { label: string; value: number; deferred?: boolean }) {
+function SourceBanner({ source }: { source: ChronicleSnapshot['source'] }) {
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-900/40 bg-emerald-950/10 px-4 py-2">
+      <span aria-hidden="true">🟢</span>
+      <span className="text-[11px] font-medium text-emerald-300">{source.service}</span>
+      <code
+        className="min-w-0 flex-1 truncate font-mono text-[10px] text-neutral-500"
+        title={source.baseUrl}
+      >
+        {source.baseUrl}
+      </code>
+      <span className="rounded border border-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-500">
+        {source.provider}
+      </span>
+      <span className="rounded border border-emerald-900/70 bg-emerald-950/40 px-1.5 py-0.5 text-[10px] text-emerald-400">
+        {source.status}
+      </span>
+    </div>
+  );
+}
+
+function InquiryWeaveMetric({ reloadKey }: { reloadKey: number }) {
+  const section = useChronicleSection<EpisodeInquiry>(
+    '/api/chronicle/inquiry',
+    reloadKey,
+    neverEmpty,
+  );
+
+  const value =
+    section.status === 'ready'
+      ? section.data?.count ?? 0
+      : section.status === 'loading'
+        ? '…'
+        : '—';
+
+  return (
+    <Metric
+      label="Inquiry weaves"
+      value={value}
+      title={section.status === 'error' ? section.error ?? 'upstream unavailable' : undefined}
+    />
+  );
+}
+
+function Metric({
+  label,
+  value,
+  deferred = false,
+  title,
+}: {
+  label: string;
+  value: number | string;
+  deferred?: boolean;
+  title?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3" title={title}>
       <div className="text-xl font-semibold text-neutral-200">{value}</div>
       <div className="mt-0.5 text-[10px] uppercase tracking-wide text-neutral-600">
         {label}{deferred ? ' · next slice' : ''}

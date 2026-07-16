@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getPlanPerspectives } from '@forgewright/lib/chronicle/client';
+import { describeChronicleSource, getPlanPerspectives } from '@forgewright/lib/chronicle/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       {
         data: null,
         error: error instanceof Error ? error.message : 'Perspective upstream unavailable',
+        source: describeChronicleSource(),
       },
       { status: 503 },
     );

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getChronicleSnapshot } from '@forgewright/lib/chronicle/client';
+import { describeChronicleSource, getChronicleSnapshot } from '@forgewright/lib/chronicle/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,7 @@ export async function GET() {
       {
         data: null,
         error: error instanceof Error ? error.message : 'Chronicle upstream unavailable',
+        source: describeChronicleSource(),
       },
       { status: 503 },
     );
