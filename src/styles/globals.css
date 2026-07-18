@@ -84,6 +84,23 @@
   --color-forge-north: var(--forge-north);
   --color-forge-north-ink: var(--forge-north-ink);
   --color-forge-north-tint: var(--forge-north-tint);
+
+  /* Type — Zilla Slab carries only the wordmark, view titles, and section
+     heads; Inter carries body; IBM Plex Mono carries IDs, hashes, timestamps,
+     and metric numerals (pair with tabular-nums). */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-zilla), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Scale: caption 12 / body 14 / section 18 / title 24 */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-section: 1.125rem;
+  --text-section--line-height: 1.5rem;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.875rem;
 }
 
 /* ═══ Base ═══════════════════════════════════════════════════════════════════ */
@@ -91,7 +108,7 @@
 body {
   background: var(--fw-ground);
   color: var(--fw-bone);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
 }
 
 ::selection {
