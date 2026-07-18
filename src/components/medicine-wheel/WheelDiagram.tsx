@@ -1,6 +1,6 @@
 'use client';
 
-import { DIRECTIONS, DIRECTION_COLORS, type DirectionName, DIRECTION_NAMES } from '@forgewright/lib/types';
+import { DIRECTIONS, type DirectionName } from '@forgewright/lib/types';
 
 // ─── Quadrant geometry ────────────────────────────────────────────────────────
 
@@ -18,6 +18,14 @@ const QUADRANTS: QuadrantDef[] = [
   { direction: 'west',  path: 'M 100 100 L 100 190 A 90 90 0 0 1 10 100 Z',  labelX: 48,  labelY: 152, ojibweLabelY: 166 },
   { direction: 'north', path: 'M 100 100 L 10 100 A 90 90 0 0 1 100 10 Z',   labelX: 48,  labelY: 52,  ojibweLabelY: 66 },
 ];
+
+// Semantic direction vars — the wheel means its colors, it does not decorate.
+const QUADRANT_FILL: Record<DirectionName, string> = {
+  east: 'var(--forge-east)',
+  south: 'var(--forge-south)',
+  west: 'var(--forge-west)',
+  north: 'var(--forge-north)',
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -52,6 +60,9 @@ export default function WheelDiagram({
           .wheel-active {
             animation: pulse-glow 2s ease-in-out infinite;
           }
+          @media (prefers-reduced-motion: reduce) {
+            .wheel-active { animation: none; }
+          }
         `}</style>
       </defs>
 
@@ -59,8 +70,6 @@ export default function WheelDiagram({
       {QUADRANTS.map(({ direction, path, labelX, labelY, ojibweLabelY }) => {
         const isActive = direction === activeDirection;
         const info = DIRECTIONS[direction];
-        const fill = DIRECTION_COLORS[direction];
-        const textFill = direction === 'west' ? '#E8E8E8' : '#1a1a2e';
 
         return (
           <g
@@ -76,17 +85,17 @@ export default function WheelDiagram({
           >
             <path
               d={path}
-              fill={fill}
-              stroke={isActive ? '#ffffff' : '#333'}
+              fill={QUADRANT_FILL[direction]}
+              stroke={isActive ? 'var(--fw-bone)' : 'var(--fw-border-strong)'}
               strokeWidth={isActive ? 2.5 : 1}
               className={isActive ? 'wheel-active' : ''}
-              opacity={isActive ? 1 : 0.75}
+              opacity={isActive ? 1 : 0.7}
             />
             <text
               x={labelX}
               y={labelY}
               textAnchor="middle"
-              fill={textFill}
+              fill="var(--fw-ground)"
               fontSize={10}
               fontWeight={isActive ? 700 : 500}
             >
@@ -96,7 +105,7 @@ export default function WheelDiagram({
               x={labelX}
               y={ojibweLabelY}
               textAnchor="middle"
-              fill={textFill}
+              fill="var(--fw-ground)"
               fontSize={7}
               opacity={0.8}
             >
@@ -107,16 +116,24 @@ export default function WheelDiagram({
       })}
 
       {/* Center circle with cycle count */}
-      <circle cx={100} cy={100} r={18} fill="#0a0a0a" stroke="#555" strokeWidth={1} />
-      <text x={100} y={96} textAnchor="middle" fill="#E8E8E8" fontSize={8} fontWeight={600}>
+      <circle cx={100} cy={100} r={18} fill="var(--fw-iron)" stroke="var(--fw-border-strong)" strokeWidth={1} />
+      <text x={100} y={96} textAnchor="middle" fill="var(--fw-ash)" fontSize={8} fontWeight={600}>
         Cycle
       </text>
-      <text x={100} y={110} textAnchor="middle" fill="#FFD700" fontSize={14} fontWeight={700}>
+      <text
+        x={100}
+        y={110}
+        textAnchor="middle"
+        fill="var(--fw-bone)"
+        fontSize={14}
+        fontWeight={700}
+        fontFamily="var(--font-mono)"
+      >
         {cycleCount}
       </text>
 
       {/* Outer ring */}
-      <circle cx={100} cy={100} r={92} fill="none" stroke="#444" strokeWidth={0.5} />
+      <circle cx={100} cy={100} r={92} fill="none" stroke="var(--fw-border)" strokeWidth={0.5} />
     </svg>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useDesignerStore, useCeremonyStore } from '@forgewright/stores';
-import { DIRECTIONS, CEREMONY_ICONS, type CeremonyPhase } from '@forgewright/lib/types';
+import { DIRECTIONS, CEREMONY_ICONS, type CeremonyPhase, type DirectionName } from '@forgewright/lib/types';
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,15 @@ const CONTEXT_TABS: { id: ContextTab; label: string }[] = [
   { id: 'ceremony', label: 'Ceremony' },
 ];
 
+// ─── Direction ink + tint (semantic, AA on coal) ─────────────────────────────
+
+const DIRECTION_ROW: Record<DirectionName, { ink: string; tint: string }> = {
+  east: { ink: 'text-forge-east-ink', tint: 'bg-forge-east-tint' },
+  south: { ink: 'text-forge-south-ink', tint: 'bg-forge-south-tint' },
+  west: { ink: 'text-forge-west-ink', tint: 'bg-forge-west-tint' },
+  north: { ink: 'text-forge-north-ink', tint: 'bg-forge-north-tint' },
+};
+
 // ─── Phase guidance (static) ──────────────────────────────────────────────────
 
 const PHASE_GUIDANCE: Record<CeremonyPhase, string> = {
@@ -23,6 +32,16 @@ const PHASE_GUIDANCE: Record<CeremonyPhase, string> = {
   integration: 'Gather learnings. Record narrative beats. Prepare for reflection.',
   closing: 'Close with gratitude. Archive the story. Honor what was forged.',
 };
+
+// ─── Section head — the slab speaks for panel sections ───────────────────────
+
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="font-display text-[13px] font-semibold tracking-wide text-neutral-200">
+      {children}
+    </h3>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -48,11 +67,11 @@ export default function ContextPanel({ collapsed = false, onToggle }: ContextPan
       <aside className="flex h-full w-12 flex-col items-center border-l border-neutral-800 bg-neutral-950 py-3">
         <button
           onClick={onToggle}
-          className="text-lg text-neutral-400 hover:text-white transition-colors"
+          className="rounded px-1.5 py-0.5 text-sm text-neutral-400 transition-colors duration-(--fw-dur-fast) hover:bg-neutral-900 hover:text-neutral-100"
           aria-label="Expand context panel"
           title="Expand context panel"
         >
-          ☰
+          «
         </button>
       </aside>
     );
@@ -64,18 +83,18 @@ export default function ContextPanel({ collapsed = false, onToggle }: ContextPan
   return (
     <aside className="flex h-full w-80 flex-col border-l border-neutral-800 bg-neutral-950">
       {/* Header with tabs */}
-      <div className="flex items-center justify-between border-b border-neutral-800 px-2 py-1">
-        <nav className="flex gap-0.5" role="tablist" aria-label="Context panel tabs">
+      <div className="flex items-center justify-between border-b border-neutral-800 px-2 py-1.5">
+        <nav className="flex gap-1" role="tablist" aria-label="Context panel tabs">
           {CONTEXT_TABS.map((tab) => (
             <button
               key={tab.id}
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+              className={`rounded px-2 py-1 text-caption font-medium transition-colors duration-(--fw-dur-fast) ${
                 activeTab === tab.id
-                  ? 'bg-neutral-800 text-white'
-                  : 'text-neutral-500 hover:text-neutral-300'
+                  ? 'bg-neutral-800 text-neutral-100'
+                  : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
               }`}
             >
               {tab.label}
@@ -85,11 +104,11 @@ export default function ContextPanel({ collapsed = false, onToggle }: ContextPan
         {onToggle && (
           <button
             onClick={onToggle}
-            className="text-sm text-neutral-500 hover:text-white transition-colors"
+            className="rounded px-1.5 py-0.5 text-sm text-neutral-400 transition-colors duration-(--fw-dur-fast) hover:bg-neutral-900 hover:text-neutral-100"
             aria-label="Collapse context panel"
             title="Collapse context panel"
           >
-            ▶
+            »
           </button>
         )}
       </div>
@@ -123,8 +142,8 @@ function PropertiesTab({
 }) {
   if (!node && !edge) {
     return (
-      <p className="text-xs text-neutral-500 italic">
-        Select a node or edge to view properties
+      <p className="text-caption text-neutral-500">
+        Select a node or edge on the canvas to see its properties here.
       </p>
     );
   }
@@ -132,12 +151,12 @@ function PropertiesTab({
   if (node) {
     return (
       <div className="space-y-3">
-        <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wide">Node</h3>
+        <SectionHead>Node</SectionHead>
         <PropertyRow label="Name" value={node.name} />
         <PropertyRow label="Kind" value={node.kind} />
         <PropertyRow label="ID" value={node.id} mono />
-        <PropertyRow label="Position" value={`(${Math.round(node.x)}, ${Math.round(node.y)})`} />
-        <PropertyRow label="Size" value={`${node.width} × ${node.height}`} />
+        <PropertyRow label="Position" value={`(${Math.round(node.x)}, ${Math.round(node.y)})`} mono />
+        <PropertyRow label="Size" value={`${node.width} × ${node.height}`} mono />
         {node.direction && (
           <PropertyRow
             label="Direction"
@@ -152,7 +171,7 @@ function PropertiesTab({
   if (edge) {
     return (
       <div className="space-y-3">
-        <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wide">Edge</h3>
+        <SectionHead>Edge</SectionHead>
         <PropertyRow label="Event" value={edge.event} />
         <PropertyRow label="ID" value={edge.id} mono />
         <PropertyRow label="Source" value={edge.sourceId} mono />
@@ -169,8 +188,12 @@ function PropertiesTab({
 function PropertyRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-2">
-      <span className="text-[10px] text-neutral-500 uppercase tracking-wide shrink-0">{label}</span>
-      <span className={`text-xs text-neutral-200 text-right break-all ${mono ? 'font-mono' : ''}`}>
+      <span className="shrink-0 text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
+      <span
+        className={`break-all text-right text-caption text-neutral-200 ${
+          mono ? 'font-mono tabular-nums' : ''
+        }`}
+      >
         {value}
       </span>
     </div>
@@ -180,24 +203,25 @@ function PropertyRow({ label, value, mono }: { label: string; value: string; mon
 // ─── Narrative Tab ────────────────────────────────────────────────────────────
 
 function NarrativeTab() {
-  // Narrative beats would come from a narrative store — show placeholder for now
+  // Narrative beats would come from a narrative store — honest placeholder until wired
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wide">
-        Narrative Arc
-      </h3>
-      <p className="text-xs text-neutral-500 italic">
-        Narrative beats will appear here as the ceremony progresses through the Four Directions.
+      <SectionHead>Narrative arc</SectionHead>
+      <p className="text-caption text-neutral-500">
+        Beats are not wired yet. They will appear here as the ceremony moves through
+        the Four Directions.
       </p>
       <div className="space-y-2">
         {(['east', 'south', 'west', 'north'] as const).map((dir) => (
           <div
             key={dir}
-            className="flex items-center gap-2 rounded border border-neutral-800 px-2 py-1.5"
+            className={`flex items-center gap-2 rounded border border-neutral-800 px-2 py-1.5 ${DIRECTION_ROW[dir].tint}`}
           >
-            <span className="text-sm">{DIRECTIONS[dir].emoji}</span>
-            <span className="text-[11px] text-neutral-400">{DIRECTIONS[dir].name}</span>
-            <span className="text-[10px] text-neutral-600 ml-auto">{DIRECTIONS[dir].ojibwe}</span>
+            <span aria-hidden className="text-sm">{DIRECTIONS[dir].emoji}</span>
+            <span className={`text-caption font-medium ${DIRECTION_ROW[dir].ink}`}>
+              {DIRECTIONS[dir].name}
+            </span>
+            <span className="ml-auto text-[10px] text-neutral-500">{DIRECTIONS[dir].ojibwe}</span>
           </div>
         ))}
       </div>
@@ -220,33 +244,33 @@ function CeremonyTab({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wide">
-        Ceremony
-      </h3>
+      <SectionHead>Ceremony</SectionHead>
 
       {/* Phase indicator */}
-      <div className="rounded border border-neutral-800 p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-semibold text-white capitalize">{currentPhase}</span>
+      <div className="rounded border border-neutral-800 bg-neutral-900 p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-caption font-semibold capitalize text-neutral-100">
+            {currentPhase}
+          </span>
           <PhaseIndicator currentPhase={currentPhase} />
         </div>
-        <p className="text-[11px] text-neutral-400 leading-relaxed">{guidance}</p>
+        <p className="text-caption leading-relaxed text-neutral-400">{guidance}</p>
       </div>
 
       {/* Active ceremony details */}
       {ceremony ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm">{CEREMONY_ICONS[ceremony.type]}</span>
-            <span className="text-xs text-neutral-200 capitalize">
+            <span aria-hidden className="text-sm">{CEREMONY_ICONS[ceremony.type]}</span>
+            <span className="text-caption capitalize text-neutral-200">
               {ceremony.type.replace('_', ' ')}
             </span>
           </div>
-          <p className="text-[11px] text-neutral-400">{ceremony.intention}</p>
+          <p className="text-caption text-neutral-400">{ceremony.intention}</p>
 
           {participants.length > 0 && (
             <div className="mt-2">
-              <span className="text-[10px] text-neutral-500 uppercase tracking-wide">
+              <span className="text-[10px] uppercase tracking-wide text-neutral-500">
                 Participants
               </span>
               <div className="mt-1 flex flex-wrap gap-1">
@@ -264,13 +288,13 @@ function CeremonyTab({
 
           {ceremony.events.length > 0 && (
             <div className="mt-2">
-              <span className="text-[10px] text-neutral-500 uppercase tracking-wide">
+              <span className="text-[10px] uppercase tracking-wide text-neutral-500">
                 Events ({ceremony.events.length})
               </span>
               <ul className="mt-1 space-y-1">
                 {ceremony.events.slice(-5).map((evt) => (
                   <li key={evt.id} className="text-[10px] text-neutral-400">
-                    <span className="text-neutral-500">
+                    <span className="font-mono tabular-nums text-neutral-500">
                       {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>{' '}
                     {evt.description}
@@ -281,7 +305,9 @@ function CeremonyTab({
           )}
         </div>
       ) : (
-        <p className="text-xs text-neutral-500 italic">No active ceremony</p>
+        <p className="text-caption text-neutral-500">
+          No ceremony is open. One opens with the next session.
+        </p>
       )}
     </div>
   );
@@ -295,12 +321,12 @@ function PhaseIndicator({ currentPhase }: { currentPhase: CeremonyPhase }) {
   const currentIdx = PHASES.indexOf(currentPhase);
 
   return (
-    <div className="flex items-center gap-1 ml-auto">
+    <div className="ml-auto flex items-center gap-1">
       {PHASES.map((phase, idx) => (
         <span
           key={phase}
-          className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
-            idx <= currentIdx ? 'bg-emerald-500' : 'bg-neutral-700'
+          className={`inline-block h-1.5 w-1.5 rounded-full transition-colors duration-(--fw-dur) ${
+            idx <= currentIdx ? 'bg-neutral-300' : 'bg-neutral-700'
           }`}
           title={phase}
         />

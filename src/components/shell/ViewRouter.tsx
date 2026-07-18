@@ -34,11 +34,11 @@ function ViewLoading({ label }: { label: string }) {
 function GraphViewPlaceholder() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="text-center">
-        <p className="text-lg text-neutral-400">🕸️ Graph View</p>
-        <p className="mt-1 text-sm text-neutral-600">Building relational visualization…</p>
-        <p className="mt-3 text-xs text-neutral-700">
-          Four Directions circular layout · KuzuDB graph substrate · OCAP-aware traversal
+      <div className="max-w-sm px-6 text-center">
+        <p className="font-display text-section text-neutral-300">Relational graph</p>
+        <p className="mt-2 text-body text-neutral-500">
+          Not wired yet. This view will draw kinship networks in a Four Directions
+          circular layout once the graph substrate connects.
         </p>
       </div>
     </div>
