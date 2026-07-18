@@ -6,4 +6,3 @@ export { default as Toolbar, type ViewTab } from './Toolbar';
 export { default as StatusBar } from './StatusBar';
 export { default as ContextPanel } from './ContextPanel';
 export { default as ViewRouter } from './ViewRouter';
-export { useWheelHealth, type WheelHealth, type WheelCounts } from './useWheelHealth';

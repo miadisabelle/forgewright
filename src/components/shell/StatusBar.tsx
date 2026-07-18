@@ -2,7 +2,12 @@
 
 import { useSpiralStore } from '@forgewright/stores';
 import { DIRECTIONS, type DirectionName } from '@forgewright/lib/types';
-import { useWheelHealth, type WheelHealth } from './useWheelHealth';
+import {
+  useMwHealth,
+  MwHeatDot,
+  MW_HEAT,
+  type MwHealthSnapshot,
+} from '@forgewright/lib/useMwHealth';
 
 // ─── Direction ink (AA on coal) ──────────────────────────────────────────────
 
@@ -13,48 +18,54 @@ const DIRECTION_INK: Record<DirectionName, string> = {
   north: 'text-forge-north-ink',
 };
 
-// ─── Wheel ember — one liveness vocabulary shell-wide ────────────────────────
+// ─── Wheel heat — shared vocabulary, rendered here for the whole shell ───────
 
-function WheelStatus({ health, retry }: { health: WheelHealth; retry: () => void }) {
-  switch (health.state) {
-    case 'checking':
-      return (
-        <span className="flex items-center gap-1.5 text-neutral-500">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-600" />
-          Wheel: checking…
-        </span>
-      );
-    case 'live':
-      return (
-        <span
-          className="flex items-center gap-1.5 text-ember"
-          title={`Medicine wheel answers · ${health.counts.episodes} episodes · ${health.counts.structuredPlans} plans · ${health.counts.stateMachines} machines`}
-        >
-          <span className="fw-ember-dot inline-block h-1.5 w-1.5 rounded-full" />
-          Wheel: live
-        </span>
-      );
-    case 'degraded':
-      return (
-        <span className="flex items-center gap-1.5 text-ember-cooling" title={health.detail}>
-          <span className="fw-cooling-dot inline-block h-1.5 w-1.5 rounded-full" />
-          Wheel: cooling
-        </span>
-      );
-    case 'down':
-      return (
-        <span className="flex items-center gap-1.5 text-neutral-400" title={health.detail}>
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-600" />
-          Wheel: cold — start medicine-wheel at :3940
+function WheelStatus({
+  health,
+  refresh,
+}: {
+  health: MwHealthSnapshot;
+  refresh: () => void;
+}) {
+  if (health.heat === null) {
+    return (
+      <span className="flex items-center gap-1.5 text-neutral-500">
+        <MwHeatDot heat={null} className="h-1.5 w-1.5" />
+        Wheel: checking…
+      </span>
+    );
+  }
+
+  const presentation = MW_HEAT[health.heat];
+  const counts = health.counts
+    ? `${health.counts.episodes} episodes · ${health.counts.structuredPlans} plans · ${health.counts.stateMachines} machines`
+    : null;
+  const title = [presentation.description, counts, health.error]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <span
+      className={`flex items-center gap-1.5 ${presentation.textClassName}`}
+      title={title}
+    >
+      <MwHeatDot heat={health.heat} className="h-1.5 w-1.5" />
+      Wheel: {presentation.label.toLowerCase()}
+      {health.heat === 'cold' && (
+        <>
+          <span className="text-neutral-500">
+            — start medicine-wheel at {health.baseUrl ?? ':3940'}
+          </span>
           <button
-            onClick={retry}
+            onClick={refresh}
             className="rounded border border-neutral-700 px-1.5 py-px text-neutral-300 transition-colors duration-(--fw-dur-fast) hover:border-neutral-600 hover:bg-neutral-800 hover:text-neutral-100"
           >
             Retry
           </button>
-        </span>
-      );
-  }
+        </>
+      )}
+    </span>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -62,18 +73,15 @@ function WheelStatus({ health, retry }: { health: WheelHealth; retry: () => void
 export default function StatusBar() {
   const currentDirection = useSpiralStore((s) => s.currentDirection);
   const directionInfo = DIRECTIONS[currentDirection];
-  const { health, retry } = useWheelHealth();
+  const { refresh, ...health } = useMwHealth();
 
-  const checkedAt =
-    health.state === 'checking'
-      ? '—'
-      : new Date(health.checkedAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        });
-
-  const mcpCapability = health.state === 'live' ? health.capabilities.mcpHttp : undefined;
+  const checkedAt = health.checkedAt
+    ? new Date(health.checkedAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : '—';
 
   return (
     <footer className="flex h-7 shrink-0 items-center justify-between border-t border-neutral-800 bg-neutral-950 px-4 text-caption">
@@ -95,19 +103,12 @@ export default function StatusBar() {
         </span>
       </div>
 
-      {/* Right: wheel ember + MCP + last check */}
+      {/* Right: wheel heat + MCP + last check */}
       <div className="flex items-center gap-3">
-        <WheelStatus health={health} retry={retry} />
+        <WheelStatus health={health} refresh={refresh} />
 
-        <span
-          className="text-neutral-500"
-          title={
-            mcpCapability === undefined || mcpCapability === 'deferred'
-              ? 'MCP over HTTP is not wired yet'
-              : `MCP over HTTP: ${mcpCapability}`
-          }
-        >
-          MCP {mcpCapability === undefined || mcpCapability === 'deferred' ? '—' : mcpCapability}
+        <span className="text-neutral-500" title="MCP over HTTP is not wired yet">
+          MCP —
         </span>
 
         <span
