@@ -60,7 +60,7 @@ describe('stcToSMDF', () => {
     expect(smdf.events).toHaveLength(1);
     // Root should have composite phase children
     expect(smdf.state.states).toBeDefined();
-    expect(smdf.state.states!.length).toBe(3); // Germination, Assimilation, Completion
+    expect(smdf.state.states!.length).toBe(4); // TensionField + Germination, Assimilation, Completion
   });
 });
 

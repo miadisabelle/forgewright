@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DirectionNameSchema, type DirectionName } from './directions';
 import type { CeremonyGuidance } from './ceremony';
 import type { NarrativeBeat } from './narrative';
+import type { StateMachineDefinition } from './smdf';
 
 // ─── Urgency ─────────────────────────────────────────────────────────────────
 
@@ -167,7 +168,8 @@ export type PipelineStage = z.infer<typeof PipelineStageSchema>;
 
 export interface StructuredPlan {
   decomposition: OntologicalDecomposition;
-  smdfSeed: Record<string, unknown> | null;
+  /** Real SMDF definition from plan(); null only for storage round-trips without a seed file. */
+  smdfSeed: StateMachineDefinition | null;
   graphNodes: Array<{ nodeType: string; id: string; [key: string]: unknown }>;
   narrativeBeats: NarrativeBeat[];
   ceremonyGuidance: CeremonyGuidance | null;

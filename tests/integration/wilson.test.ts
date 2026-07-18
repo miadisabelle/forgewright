@@ -8,7 +8,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ForgewrightGraph, type OcapContext } from '@forgewright/lib/graph/database';
 import { computeWilsonAlignment, type WilsonAlignmentScore } from '@forgewright/lib/graph/wilson';
+import { GraphEdgeSchema, GraphNodeSchema } from '@forgewright/lib/types/graph';
 import type { OcapMetadata } from '@forgewright/lib/types/ocap';
+import type { z } from 'zod';
+
+// Fixtures built THROUGH the canonical schemas: defaults (urgency, strength)
+// apply, and any future schema drift fails loudly here instead of silently.
+const node = (input: z.input<typeof GraphNodeSchema>) => GraphNodeSchema.parse(input);
+const edge = (input: z.input<typeof GraphEdgeSchema>) => GraphEdgeSchema.parse(input);
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({
@@ -111,13 +118,13 @@ describe('Wilson Alignment Scoring', () => {
       createdAt: now,
     });
 
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'intent-1',
       nodeType: 'Intent',
       description: 'Build auth module',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     await graph.createNode({
       id: 'step-1',
@@ -150,80 +157,80 @@ describe('Wilson Alignment Scoring', () => {
     });
 
     // Edges: session governed by ceremony
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-gov',
       fromId: 'session-1',
       toId: 'ceremony-1',
       edgeType: 'GOVERNED_BY',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Edges: steps belong to session
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-bt1',
       fromId: 'step-1',
       toId: 'session-1',
       edgeType: 'BELONGS_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
-    await graph.createEdge({
+    }));
+    await graph.createEdge(edge({
       id: 'e-bt2',
       fromId: 'step-2',
       toId: 'session-1',
       edgeType: 'BELONGS_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Edges: steps accountable to companion
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-acc1',
       fromId: 'step-1',
       toId: 'comp-mia',
       edgeType: 'ACCOUNTABLE_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
-    await graph.createEdge({
+    }));
+    await graph.createEdge(edge({
       id: 'e-acc2',
       fromId: 'step-2',
       toId: 'comp-mia',
       edgeType: 'ACCOUNTABLE_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Edges: intent accountable to companion
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-acc3',
       fromId: 'intent-1',
       toId: 'comp-mia',
       edgeType: 'ACCOUNTABLE_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Edges: beat narrates step
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-narr',
       fromId: 'beat-1',
       toId: 'step-1',
       edgeType: 'NARRATES',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Edges: step depends on step
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-dep',
       fromId: 'step-2',
       toId: 'step-1',
       edgeType: 'DEPENDS_ON',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     const score = await computeWilsonAlignment(graph, CTX);
 
@@ -263,13 +270,13 @@ describe('Wilson Alignment Scoring', () => {
       createdAt: now,
     });
 
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'intent-alone',
       nodeType: 'Intent',
       description: 'Unaccountable intent',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     const score = await computeWilsonAlignment(graph, CTX);
 
@@ -437,33 +444,33 @@ describe('Wilson Alignment Scoring', () => {
       createdAt: now,
     });
 
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'intent-mid',
       nodeType: 'Intent',
       description: 'An intent',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Session governed by ceremony
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-gov-mid',
       fromId: 'session-mid',
       toId: 'ceremony-mid',
       edgeType: 'GOVERNED_BY',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Step belongs to session
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'e-bt-mid',
       fromId: 'step-mid',
       toId: 'session-mid',
       edgeType: 'BELONGS_TO',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     const score = await computeWilsonAlignment(graph, CTX);
 

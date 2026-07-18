@@ -24,7 +24,7 @@ type SmcraftCodegen = {
 };
 
 type SmcraftParser = {
-  enrichModel: (def: StateMachineDefinition) => EnrichedModel;
+  enrich: (def: StateMachineDefinition) => EnrichedModel;
 };
 
 let _codegen: SmcraftCodegen | null = null;
@@ -65,7 +65,9 @@ export async function generateCode(
 
   if (hasSmcraft && _codegen && _parser && language === 'typescript') {
     try {
-      const enriched = _parser.enrichModel(definition);
+      // smcraft/parser has always exported `enrich` — the old `enrichModel`
+      // name never existed, which silently forced the template fallback.
+      const enriched = _parser.enrich(definition);
       const generator = new _codegen.TypeScriptCodeGenerator(enriched);
       return generator.generate();
     } catch {

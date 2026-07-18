@@ -14,8 +14,19 @@ import {
   getAuditLog,
   clearAuditLog,
 } from '@forgewright/lib/graph/ocap-filter';
-import type { GraphNode, GraphEdge } from '@forgewright/lib/types/graph';
+import {
+  GraphEdgeSchema,
+  GraphNodeSchema,
+  type GraphNode,
+  type GraphEdge,
+} from '@forgewright/lib/types/graph';
 import type { OcapMetadata } from '@forgewright/lib/types/ocap';
+import type { z } from 'zod';
+
+// Fixtures built THROUGH the canonical schemas: defaults (status, urgency,
+// strength) apply, and future schema drift fails loudly instead of silently.
+const node = (input: z.input<typeof GraphNodeSchema>) => GraphNodeSchema.parse(input);
+const edge = (input: z.input<typeof GraphEdgeSchema>) => GraphEdgeSchema.parse(input);
 
 // Mock filesystem
 vi.mock('node:fs/promises', () => ({
@@ -105,14 +116,14 @@ describe('OCAP Enforcement', () => {
   // ── Test 2: public node ALWAYS returned ──────────────────────────────────
 
   it('always allows access to public nodes regardless of context', async () => {
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'public-001',
       nodeType: 'Spec',
       name: 'Public Spec',
       version: '1.0.0',
       ocap: ocap('public'),
       createdAt: now,
-    });
+    }));
 
     // Public context
     const d1 = checkAccess('public-001', ocap('public'), PUBLIC_CTX);
@@ -130,13 +141,13 @@ describe('OCAP Enforcement', () => {
   // ── Test 3: community node returned with proper access level ─────────────
 
   it('allows community-level access for community+ requesters', async () => {
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'community-001',
       nodeType: 'Intent',
       description: 'Community intent',
       ocap: ocap('community'),
       createdAt: now,
-    });
+    }));
 
     // Community requester → allowed
     const d1 = checkAccess('community-001', ocap('community'), COMMUNITY_CTX);
@@ -188,8 +199,8 @@ describe('OCAP Enforcement', () => {
     clearAuditLog();
 
     const nodes: GraphNode[] = [
-      { id: 'pub', nodeType: 'Spec', name: 'Public', version: '1.0', ocap: ocap('public'), createdAt: now },
-      { id: 'comm', nodeType: 'Intent', description: 'Community', ocap: ocap('community'), createdAt: now },
+      node({ id: 'pub', nodeType: 'Spec', name: 'Public', version: '1.0', ocap: ocap('public'), createdAt: now }),
+      node({ id: 'comm', nodeType: 'Intent', description: 'Community', ocap: ocap('community'), createdAt: now }),
       { id: 'sacr', nodeType: 'Ceremony', name: 'Sacred', phase: 'active', ocap: ocap('sacred'), createdAt: now },
       { id: 'cere', nodeType: 'Ceremony', name: 'Ceremony-level', phase: 'active', ocap: ocap('ceremony'), createdAt: now },
     ];
@@ -229,22 +240,22 @@ describe('OCAP Enforcement', () => {
 
   it('neighborhood query filters sacred nodes from results', async () => {
     // Create a public hub node with sacred and community neighbors
-    await graph.createNode({
+    await graph.createNode(node({
       id: 'hub',
       nodeType: 'Spec',
       name: 'Hub Spec',
       version: '1.0',
       ocap: ocap('public'),
       createdAt: now,
-    });
-    await graph.createNode({
+    }));
+    await graph.createNode(node({
       id: 'neighbor-pub',
       nodeType: 'Spec',
       name: 'Public Neighbor',
       version: '1.0',
       ocap: ocap('public'),
       createdAt: now,
-    });
+    }));
     await graph.createNode({
       id: 'neighbor-sacred',
       nodeType: 'Ceremony',
@@ -254,22 +265,22 @@ describe('OCAP Enforcement', () => {
       createdAt: now,
     });
 
-    await graph.createEdge({
+    await graph.createEdge(edge({
       id: 'edge-1',
       fromId: 'hub',
       toId: 'neighbor-pub',
       edgeType: 'KIN_OF',
       ocap: ocap('public'),
       createdAt: now,
-    });
-    await graph.createEdge({
+    }));
+    await graph.createEdge(edge({
       id: 'edge-2',
       fromId: 'hub',
       toId: 'neighbor-sacred',
       edgeType: 'GOVERNED_BY',
       ocap: ocap('sacred'),
       createdAt: now,
-    });
+    }));
 
     // Community query — sacred neighbor should be filtered out
     const result = await neighborhood(graph, 'hub', COMMUNITY_CTX, 1);

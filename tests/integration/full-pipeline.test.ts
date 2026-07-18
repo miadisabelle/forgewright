@@ -162,7 +162,7 @@ describe('Full Pipeline — Golden Path', () => {
     expect(smdf.settings.namespace).toBe('forgewright.stc');
     expect(smdf.state.name).toBe('CreativeProcess');
     expect(smdf.state.states).toBeDefined();
-    expect(smdf.state.states!.length).toBe(3); // Germination, Assimilation, Completion
+    expect(smdf.state.states!.length).toBe(4); // TensionField + Germination, Assimilation, Completion
 
     // SMDF → Machine
     const machine = await createMachine(smdf);
