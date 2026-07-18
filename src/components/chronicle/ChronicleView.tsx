@@ -638,10 +638,14 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
         <Markdown>{perspective.bodyMarkdown}</Markdown>
       </div>
       {perspective.miaContext ? (
-        <div className="mt-2 rounded border border-cyan-900/40 bg-cyan-950/10 px-2.5 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-cyan-500">🧠 Mia context</p>
-          <Markdown className="mt-1">{perspective.miaContext}</Markdown>
-        </div>
+        // Mia's voice: the engineer's margin note — steel rule, raised iron,
+        // mono label. Distinct from Miette's rose narrative around it.
+        <aside className="mt-2.5 rounded border border-fw-border border-l-2 border-l-neutral-500 bg-fw-iron-2 px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-400">
+            <span aria-hidden="true">🧠</span> Mia · structural context
+          </p>
+          <Markdown className="mt-1.5">{perspective.miaContext}</Markdown>
+        </aside>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
         <span className="font-mono">{perspective.planFilename}</span>
