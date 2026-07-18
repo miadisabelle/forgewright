@@ -108,7 +108,10 @@ describe('Creative Process State Machine', () => {
 
   it('moves through Germination → Assimilation → Completion with step + phase events', async () => {
     const definition = createCreativeProcessMachine('Build feature');
-    machine = await createMachine(definition);
+    // Golden-path drive: guards fail closed in the runtime (0.3.0 contract),
+    // so this test states its precondition — every guard condition (steps
+    // complete, review approved, tests pass) holds along this narrative.
+    machine = await createMachine(definition, { guard: () => true });
 
     // Start at TaskDefinition (germination)
     expect(machine.currentState).toBe('TaskDefinition');
