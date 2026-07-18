@@ -27,17 +27,9 @@ function useMediaQuery(query: string): boolean {
 
 interface AppShellProps {
   children?: React.ReactNode;
-  wilsonScore?: number;
-  mcpConnected?: boolean;
-  lastActionTimestamp?: string | null;
 }
 
-export default function AppShell({
-  children,
-  wilsonScore = 0,
-  mcpConnected = false,
-  lastActionTimestamp = null,
-}: AppShellProps) {
+export default function AppShell({ children }: AppShellProps) {
   const isNarrow = useMediaQuery('(max-width: 1023px)');
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -59,7 +51,10 @@ export default function AppShell({
       {/* Three-pane body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Medicine Wheel Sidebar */}
-        <MedicineWheelSidebar />
+        <MedicineWheelSidebar
+          collapsed={leftCollapsed}
+          onToggle={() => setLeftCollapsed((p) => !p)}
+        />
 
         {/* Center: Main content area */}
         <main className="flex-1 overflow-auto bg-neutral-900">
@@ -73,12 +68,8 @@ export default function AppShell({
         />
       </div>
 
-      {/* Bottom status bar */}
-      <StatusBar
-        wilsonScore={wilsonScore}
-        mcpConnected={mcpConnected}
-        lastActionTimestamp={lastActionTimestamp}
-      />
+      {/* Bottom status bar — wheel liveness lives here */}
+      <StatusBar />
     </div>
   );
 }

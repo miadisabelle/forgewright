@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useSessionStore } from '@forgewright/stores';
 import { useSpiralStore } from '@forgewright/stores';
 import { DIRECTIONS, type DirectionName } from '@forgewright/lib/types';
@@ -8,8 +7,15 @@ import WheelDiagram from './WheelDiagram';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function MedicineWheelSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface MedicineWheelSidebarProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
+
+export default function MedicineWheelSidebar({
+  collapsed = false,
+  onToggle,
+}: MedicineWheelSidebarProps) {
 
   const currentDirection = useSpiralStore((s) => s.currentDirection);
   const cycleCount = useSpiralStore((s) => s.cycleCount);
@@ -28,7 +34,7 @@ export default function MedicineWheelSidebar() {
     return (
       <aside className="flex h-full w-12 flex-col items-center border-r border-neutral-800 bg-neutral-950 py-3">
         <button
-          onClick={() => setCollapsed(false)}
+          onClick={onToggle}
           className="mb-4 text-lg text-neutral-400 hover:text-white transition-colors"
           aria-label="Expand sidebar"
           title="Expand sidebar"
@@ -51,7 +57,7 @@ export default function MedicineWheelSidebar() {
           Medicine Wheel
         </span>
         <button
-          onClick={() => setCollapsed(true)}
+          onClick={onToggle}
           className="text-neutral-500 hover:text-white transition-colors text-sm"
           aria-label="Collapse sidebar"
           title="Collapse sidebar"
