@@ -59,6 +59,7 @@ describe('getEpisodeInquiry', () => {
       issueUrl: 'https://github.com/miadisabelle/Etuaptmumk-RSM/issues/245',
       syncState: 'in-sync',
       syncedAt: '2026-07-15T01:00:00Z',
+      episodePath: EP_PATH,
     });
   });
 
@@ -97,6 +98,27 @@ describe('getEpisodeInquiry', () => {
       'ep126-second',
     ]);
     expect(result.inquiries[1].syncState).toBe('stale');
+    // A relation carrying its own episode keeps it; one without inherits the group's.
+    expect(result.inquiries[0].episodePath).toBe(EP_PATH);
+    expect(result.inquiries[1].episodePath).toBe(`${EP_PATH}-b`);
+  });
+
+  it('preserves per-weave episode paths in the unfiltered projection for client-side grouping', async () => {
+    const fetchImpl = createInquiryFetch({
+      provider: 'jsonl',
+      count: 2,
+      inquiry_weaves: [
+        ep126Inquiry,
+        { ...ep126Inquiry, artefact: { id: 'ep128-second' }, episode: { number: 128, path: `${EP_PATH}-128` } },
+      ],
+    });
+
+    const result = await getEpisodeInquiry(null, { fetchImpl });
+
+    expect(result.inquiries.map((relation) => relation.episodePath)).toEqual([
+      EP_PATH,
+      `${EP_PATH}-128`,
+    ]);
   });
 
   it('projects every registered weave when no episode filter is given', async () => {

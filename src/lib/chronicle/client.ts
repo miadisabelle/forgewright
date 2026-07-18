@@ -304,6 +304,8 @@ export interface InquiryRelation {
   syncState: InquirySyncState;
   syncedAt?: string;
   relatedAt?: string;
+  /** Episode identity from the weave record, so one unfiltered projection can be grouped per episode client-side. */
+  episodePath?: string;
 }
 
 export interface EpisodeInquiry {
@@ -350,20 +352,37 @@ function normalizeInquiryRelation(value: unknown): InquiryRelation | null {
   const relatedAt = optionalString(value.related_at);
   if (relatedAt) relation.relatedAt = relatedAt;
 
+  const episodePath = isRecord(value.episode) ? value.episode.path : undefined;
+  if (isSafeRelativePath(episodePath)) relation.episodePath = episodePath;
+
   return relation;
 }
 
 function collectInquiryRelations(value: unknown): InquiryRelation[] {
   if (!isRecord(value)) return [];
 
+  if (Array.isArray(value.weaves)) {
+    // Grouped by episode (episode_number can match several); flatten every weave,
+    // stamping the group's episode path on relations that lack their own.
+    const relations: InquiryRelation[] = [];
+    for (const weave of value.weaves) {
+      if (!isRecord(weave) || !Array.isArray(weave.inquiries)) continue;
+      const groupPath = isRecord(weave.episode) ? weave.episode.path : undefined;
+      for (const entry of weave.inquiries) {
+        const relation = normalizeInquiryRelation(entry);
+        if (!relation) continue;
+        if (!relation.episodePath && isSafeRelativePath(groupPath)) {
+          relation.episodePath = groupPath;
+        }
+        relations.push(relation);
+      }
+    }
+    return relations;
+  }
+
   let raw: unknown[] = [];
   if (Array.isArray(value.inquiry_weaves)) {
     raw = value.inquiry_weaves;
-  } else if (Array.isArray(value.weaves)) {
-    // Grouped by episode (episode_number can match several); flatten every weave.
-    raw = value.weaves.flatMap((weave) =>
-      isRecord(weave) && Array.isArray(weave.inquiries) ? weave.inquiries : [],
-    );
   } else if (Array.isArray(value.inquiries)) {
     raw = value.inquiries;
   }
