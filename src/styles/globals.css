@@ -1,12 +1,152 @@
 @import "tailwindcss";
 
+/* ═══ Forgewright ground — warm coal ═════════════════════════════════════════
+   Medicine-wheel is the night sky (midnight indigo). Forgewright is the coal
+   bed beside it — same night, different material. Every surface, border, and
+   text tone derives from this ramp. Ember is RESERVED for liveness: a healthy
+   medicine-wheel connection, a running state machine, an active session.
+   A dead thing never wears ember. */
+
 :root {
+  /* Material */
+  --fw-ground: #131110;   /* warm coal — page ground */
+  --fw-iron: #1E1A17;     /* surface */
+  --fw-iron-2: #282320;   /* raised surface */
+  --fw-border: #332D28;   /* seams between iron */
+  --fw-border-strong: #453E38;
+
+  /* Text */
+  --fw-bone: #EDE7E0;     /* primary text — warm white */
+  --fw-ash: #A69E97;      /* muted text */
+
+  /* Liveness — ember vocabulary (live → cooling → cold) */
+  --fw-ember: #FF6D3B;
+  --fw-ember-glow: 0 0 0 1px rgb(255 109 59 / 0.25), 0 0 8px 1px rgb(255 109 59 / 0.55);
+  --fw-ember-cooling: #C05A38;      /* degraded — dot */
+  --fw-ember-cooling-ink: #D96A42;  /* degraded — text, 5.4:1 on coal */
+
+  /* Directions — semantic, never decoration.
+     -ink is AA text on coal (≥6.8:1); -tint is a panel wash. */
   --forge-east: #F59E0B;
+  --forge-east-ink: #FBB03B;
+  --forge-east-tint: rgb(245 158 11 / 0.10);
   --forge-south: #EF4444;
+  --forge-south-ink: #F87171;
+  --forge-south-tint: rgb(239 68 68 / 0.10);
   --forge-west: #3B82F6;
+  --forge-west-ink: #60A5FA;
+  --forge-west-tint: rgb(59 130 246 / 0.10);
   --forge-north: #8B5CF6;
+  --forge-north-ink: #A78BFA;
+  --forge-north-tint: rgb(139 92 246 / 0.10);
+
+  /* Motion */
+  --fw-dur-fast: 120ms;
+  --fw-dur: 200ms;
+  --fw-dur-slow: 400ms;
 }
 
+/* ═══ Tailwind theme — the ground shifts under every existing utility ════════
+   neutral-* remaps to the warm-coal ramp so chronicle and designer views
+   inherit the material without edits. */
+
+@theme inline {
+  --color-neutral-50: #F7F4EF;
+  --color-neutral-100: var(--fw-bone);
+  --color-neutral-200: #D9D2C9;
+  --color-neutral-300: #C2BAB1;
+  --color-neutral-400: var(--fw-ash);
+  --color-neutral-500: #8F867E;
+  --color-neutral-600: #6B6259;
+  --color-neutral-700: var(--fw-border-strong);
+  --color-neutral-800: var(--fw-border);
+  --color-neutral-900: var(--fw-iron);
+  --color-neutral-950: var(--fw-ground);
+
+  --color-fw-ground: var(--fw-ground);
+  --color-fw-iron: var(--fw-iron);
+  --color-fw-iron-2: var(--fw-iron-2);
+  --color-fw-border: var(--fw-border);
+  --color-fw-bone: var(--fw-bone);
+  --color-fw-ash: var(--fw-ash);
+  --color-ember: var(--fw-ember);
+  --color-ember-cooling: var(--fw-ember-cooling-ink);
+
+  --color-forge-east: var(--forge-east);
+  --color-forge-east-ink: var(--forge-east-ink);
+  --color-forge-east-tint: var(--forge-east-tint);
+  --color-forge-south: var(--forge-south);
+  --color-forge-south-ink: var(--forge-south-ink);
+  --color-forge-south-tint: var(--forge-south-tint);
+  --color-forge-west: var(--forge-west);
+  --color-forge-west-ink: var(--forge-west-ink);
+  --color-forge-west-tint: var(--forge-west-tint);
+  --color-forge-north: var(--forge-north);
+  --color-forge-north-ink: var(--forge-north-ink);
+  --color-forge-north-tint: var(--forge-north-tint);
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════════════════ */
+
 body {
+  background: var(--fw-ground);
+  color: var(--fw-bone);
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+::selection {
+  background: var(--fw-border-strong);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fw-border) transparent;
+}
+
+/* Focus is never suppressed — one visible ring everywhere. */
+:focus-visible {
+  outline: 2px solid var(--fw-bone);
+  outline-offset: 2px;
+}
+
+/* ═══ Liveness — the ember ═══════════════════════════════════════════════════
+   One vocabulary shell-wide: glowing ember = the wheel answers, cooling iron
+   = degraded, cold iron = down. Under reduced motion the ember is a static
+   dot — still ember-colored, never animated. */
+
+.fw-ember-dot {
+  background: var(--fw-ember);
+  box-shadow: var(--fw-ember-glow);
+}
+
+.fw-cooling-dot {
+  background: var(--fw-ember-cooling);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fw-ember-dot {
+    animation: fw-ember-breathe 2.6s ease-in-out infinite;
+  }
+}
+
+@keyframes fw-ember-breathe {
+  0%, 100% {
+    box-shadow: var(--fw-ember-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgb(255 109 59 / 0.18), 0 0 3px 0 rgb(255 109 59 / 0.35);
+  }
+}
+
+/* ═══ Motion guard — all animation yields to reduced motion ══════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
