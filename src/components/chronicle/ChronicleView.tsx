@@ -26,6 +26,13 @@ import {
   type SharedResource,
 } from '@forgewright/lib/chronicle/viewCache';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
+import {
+  MW_HEAT,
+  MwHeatDot,
+  deriveStatus,
+  heatForStatus,
+  type MwHeat,
+} from '@forgewright/lib/useMwHealth';
 import Markdown from './Markdown';
 
 interface ChronicleApiResponse {
@@ -304,7 +311,8 @@ export default function ChronicleView() {
         setSnapshot(body.data);
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setSnapshot(null);
+        // Keep the last snapshot: a failed refresh means the iron is COOLING,
+        // and cooling shows the wheel's last answer rather than a blank page.
         setError(loadError instanceof Error ? loadError.message : 'Chronicle unavailable');
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -315,7 +323,13 @@ export default function ChronicleView() {
     return () => controller.abort();
   }, [reloadKey]);
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading && !snapshot) return <LoadingState />;
+
+  // The chronicle's own fetch is its probe of the wheel: a fresh answer is
+  // ember, a failed refresh over a kept snapshot is cooling, nothing at all
+  // is cold. Same pure derivation the StatusBar uses (useMwHealth).
+  const status = deriveStatus(!error && snapshot !== null, snapshot !== null);
+  const heat = heatForStatus(status);
 
   return (
     <section className="flex h-full flex-col overflow-hidden" aria-labelledby="chronicle-title">
@@ -325,7 +339,7 @@ export default function ChronicleView() {
             <h2 id="chronicle-title" className="text-sm font-semibold uppercase tracking-widest text-neutral-300">
               Miadi Chronicle
             </h2>
-            <span className="rounded border border-emerald-900/70 bg-emerald-950/40 px-1.5 py-0.5 text-[10px] text-emerald-400">
+            <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">
               Read-only
             </span>
           </div>
@@ -336,35 +350,23 @@ export default function ChronicleView() {
         <button
           type="button"
           onClick={refresh}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500"
+          disabled={isLoading}
+          aria-busy={isLoading}
+          className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-wait disabled:opacity-60"
         >
-          Refresh
+          {isLoading ? 'Refreshing…' : 'Refresh'}
         </button>
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 [content-visibility:auto]">
-        {error ? (
-          <div className="rounded-lg border border-red-900/70 bg-red-950/30 p-4" role="alert">
-            <p className="text-sm text-red-300">Chronicle unavailable</p>
-            <p className="mt-1 text-xs text-red-400/70">{error}</p>
-            {errorSource ? (
-              <p className="mt-2 font-mono text-[10px] text-red-400/60">
-                {errorSource.baseUrl
-                  ? `upstream: ${errorSource.service} · ${errorSource.baseUrl}`
-                  : `misconfigured: ${errorSource.configError ?? 'MW_API_URL is invalid'}`}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={refresh}
-              className="mt-3 rounded border border-red-800 px-2.5 py-1 text-xs text-red-300 hover:border-red-600"
-            >
-              Try again
-            </button>
-          </div>
-        ) : snapshot ? (
+        {snapshot ? (
           <div className="mx-auto max-w-4xl space-y-6">
-            <SourceBanner source={snapshot.source} />
+            <ConnectionBanner
+              source={snapshot.source}
+              heat={heat ?? 'ember'}
+              error={error}
+              onRetry={refresh}
+            />
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Episodes" value={snapshot.episodes.length} />
@@ -455,6 +457,8 @@ export default function ChronicleView() {
               </p>
             ) : null}
           </div>
+        ) : error ? (
+          <ColdCard error={error} errorSource={errorSource} onRetry={refresh} />
         ) : null}
       </div>
     </section>
@@ -726,23 +730,99 @@ function PlanPerspectiveSection({
   );
 }
 
-function SourceBanner({ source }: { source: ChronicleSnapshot['source'] }) {
+// ─── Connection as heat ──────────────────────────────────────────────────────
+// The banner and the StatusBar ember speak one vocabulary (useMwHealth):
+// glowing ember = the wheel answers, cooling iron = a failed refresh over the
+// kept snapshot, cold iron = nothing to show at all (ColdCard below).
+
+function ConnectionBanner({
+  source,
+  heat,
+  error,
+  onRetry,
+}: {
+  source: ChronicleSnapshot['source'];
+  heat: MwHeat;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  const presentation = MW_HEAT[heat];
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-900/40 bg-emerald-950/10 px-4 py-2">
-      <span aria-hidden="true">🟢</span>
-      <span className="text-[11px] font-medium text-emerald-300">{source.service}</span>
-      <code
-        className="min-w-0 flex-1 truncate font-mono text-[10px] text-neutral-500"
-        title={source.baseUrl}
+    <div
+      className={`rounded-lg border px-4 py-2.5 ${
+        heat === 'ember' ? 'border-fw-border bg-fw-iron' : 'border-ember-cooling/40 bg-fw-iron'
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <MwHeatDot heat={heat} />
+        <span className="text-caption font-medium text-neutral-100">Medicine Wheel</span>
+        <span className={`text-caption font-medium ${presentation.textClassName}`}>
+          {presentation.label}
+        </span>
+        <code
+          className="min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-500"
+          title={source.baseUrl}
+        >
+          {source.baseUrl}
+        </code>
+        <span className="rounded border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
+          {source.provider}
+        </span>
+      </div>
+      {heat === 'cooling' ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-ember-cooling/20 pt-2" role="alert">
+          <p className="min-w-0 flex-1 text-caption text-ember-cooling">
+            {MW_HEAT.cooling.description}
+            {error ? <span className="ml-2 font-mono text-[11px] opacity-80">{error}</span> : null}
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded border border-ember-cooling/50 px-2.5 py-1 text-caption text-ember-cooling transition-colors hover:border-ember-cooling"
+          >
+            Reheat
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ColdCard({
+  error,
+  errorSource,
+  onRetry,
+}: {
+  error: string;
+  errorSource: ChronicleSourceInfo | null;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="mx-auto max-w-xl rounded-lg border border-fw-border bg-fw-iron p-5" role="alert">
+      <div className="flex items-center gap-2.5">
+        <MwHeatDot heat="cold" />
+        <p className="text-body font-medium text-neutral-100">The Medicine Wheel is not answering</p>
+      </div>
+      <p className="mt-2 text-caption leading-relaxed text-neutral-400">
+        The chronicle reads everything from the wheel, so there is nothing to show while it is
+        cold. Start the wheel — or check MW_API_URL — then try again.
+      </p>
+      <p className="mt-3 font-mono text-[11px] text-neutral-500">{error}</p>
+      {errorSource ? (
+        <p className="mt-1 font-mono text-[11px] text-neutral-600">
+          {errorSource.baseUrl
+            ? `upstream: ${errorSource.service} · ${errorSource.baseUrl}`
+            : `misconfigured: ${errorSource.configError ?? 'MW_API_URL is invalid'}`}
+        </p>
+      ) : null}
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 rounded border border-neutral-700 px-3 py-1.5 text-caption text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
       >
-        {source.baseUrl}
-      </code>
-      <span className="rounded border border-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-500">
-        {source.provider}
-      </span>
-      <span className="rounded border border-emerald-900/70 bg-emerald-950/40 px-1.5 py-0.5 text-[10px] text-emerald-400">
-        {source.status}
-      </span>
+        Try again
+      </button>
     </div>
   );
 }
