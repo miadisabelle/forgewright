@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   findParentEpisode,
   getEpisodeInquiryPath,
@@ -64,7 +64,7 @@ function ReferenceCard({
   return (
     <article className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 transition-colors hover:border-neutral-700">
       {reference.kind === 'structured_plan' ? (
-        <p className="mb-3 text-[10px] uppercase tracking-wide text-cyan-500">
+        <p className="mb-3 text-[11px] uppercase tracking-wide text-neutral-500">
           {parentEpisode ? `Contained in ${parentEpisode.name}` : 'Episode association unavailable'}
         </p>
       ) : null}
@@ -74,30 +74,30 @@ function ReferenceCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-medium text-neutral-100">{reference.name}</h3>
+            <h3 className="text-body font-medium text-neutral-100">{reference.name}</h3>
             {reference.status ? (
-              <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+              <span className="rounded border border-neutral-700 bg-fw-iron-2 px-1.5 py-0.5 text-[10px] text-neutral-400">
                 {reference.status}
               </span>
             ) : null}
           </div>
           {reference.description ? (
-            <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+            <p className="mt-1 text-[13px] leading-relaxed text-neutral-400">
               {reference.description}
             </p>
           ) : null}
           {reference.goalSummary ? (
-            <p className="mt-2 rounded border border-amber-900/40 bg-amber-950/20 px-2.5 py-2 text-xs leading-relaxed text-amber-200/80">
-              <span className="font-medium text-amber-400">Goal:</span> {reference.goalSummary}
+            <p className="mt-2 rounded border-l-2 border-neutral-600 bg-fw-iron-2 px-2.5 py-2 text-caption leading-relaxed text-neutral-300">
+              <span className="font-semibold text-neutral-100">Goal:</span> {reference.goalSummary}
             </p>
           ) : null}
-          <p className="mt-3 break-all font-mono text-[10px] text-neutral-600">
+          <p className="mt-3 break-all font-mono text-[11px] text-neutral-600">
             {reference.relativePath}
           </p>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-600">
             {direction ? <span>{direction.ojibwe} · {direction.name}</span> : null}
-            {timestamp ? <span>Updated {timestamp}</span> : null}
-            {reference.schemaVersion ? <span>{reference.schemaVersion}</span> : null}
+            {timestamp ? <span className="font-mono tabular-nums">Updated {timestamp}</span> : null}
+            {reference.schemaVersion ? <span className="font-mono">{reference.schemaVersion}</span> : null}
           </div>
         </div>
       </div>
@@ -109,8 +109,8 @@ function LoadingState() {
   return (
     <div className="flex flex-1 items-center justify-center" role="status">
       <div className="text-center">
-        <div className="text-sm text-neutral-400">Opening the Chronicle…</div>
-        <div className="mt-2 text-xs text-neutral-600">Medicine Wheel · read-only</div>
+        <div className="text-body text-neutral-400 motion-safe:animate-pulse">Opening the chronicle…</div>
+        <div className="mt-2 text-caption text-neutral-600">Medicine Wheel · read-only</div>
       </div>
     </div>
   );
@@ -335,16 +335,16 @@ export default function ChronicleView() {
     <section className="flex h-full flex-col overflow-hidden" aria-labelledby="chronicle-title">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 px-6 py-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 id="chronicle-title" className="text-sm font-semibold uppercase tracking-widest text-neutral-300">
+          <div className="flex items-baseline gap-2.5">
+            <h2 id="chronicle-title" className="font-display text-title font-semibold text-neutral-100">
               Miadi Chronicle
             </h2>
             <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">
               Read-only
             </span>
           </div>
-          <p className="mt-1 text-xs text-neutral-600">
-            Relational references served by Medicine Wheel; episode files remain canonical.
+          <p className="mt-1 text-caption text-neutral-500">
+            Relational references served by the Medicine Wheel. Episode files stay canonical.
           </p>
         </div>
         <button
@@ -371,32 +371,34 @@ export default function ChronicleView() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
-              <InquiryWeaveMetric resource={sharedInquiry.resource} />
-              <Metric label="State machines" value={snapshot.stateMachines.length} deferred />
+              <InquiryWeaveMetric resource={sharedInquiry.resource} onRetry={sharedInquiry.retry} />
+              <Metric label="State machines" value={snapshot.stateMachines.length} />
             </div>
 
             {snapshot.root ? (
-              <div className="rounded-lg border border-purple-900/40 bg-purple-950/15 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs text-purple-300">
+              // North holds the archive — the root wears the north direction by meaning.
+              <div className="rounded-lg border border-forge-north/40 bg-forge-north-tint px-4 py-3">
+                <div className="flex items-center gap-2 text-caption text-forge-north-ink">
                   <span aria-hidden="true">❄️</span>
                   <span>{snapshot.root.name}</span>
-                  <span className="ml-auto font-mono text-[10px] text-purple-500">
+                  <span className="ml-auto font-mono text-[11px] text-forge-north-ink/70">
                     {snapshot.source.provider}
                   </span>
                 </div>
               </div>
             ) : (
-              <p className="rounded border border-amber-900/50 bg-amber-950/20 p-3 text-xs text-amber-300">
-                Chronicle root reference is not registered.
+              <p className="rounded border border-neutral-700 bg-fw-iron p-3 text-caption text-neutral-400">
+                No chronicle root is registered yet. Register MIADI_CHRONICLE_ROOT with the
+                Medicine Wheel to anchor this view.
               </p>
             )}
 
             <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="font-display text-section font-semibold text-neutral-100">
                   Registered episodes
                 </h3>
-                <span className="text-[10px] text-neutral-600">Medicine Wheel references</span>
+                <span className="text-[11px] text-neutral-600">Medicine Wheel references</span>
               </div>
               {snapshot.episodes.length > 0 ? (
                 <div className="space-y-3">
@@ -415,18 +417,19 @@ export default function ChronicleView() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-xs text-neutral-600">
-                  No Chronicle episode references are registered yet.
+                <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-caption text-neutral-500">
+                  No episodes registered yet. When Miadi registers a chronicle episode with the
+                  Medicine Wheel, it appears here.
                 </div>
               )}
             </div>
 
             <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="font-display text-section font-semibold text-neutral-100">
                   Registered structured plans
                 </h3>
-                <span className="text-[10px] text-neutral-600">Medicine Wheel relations</span>
+                <span className="text-[11px] text-neutral-600">Medicine Wheel relations</span>
               </div>
               {snapshot.structuredPlans.length > 0 ? (
                 <div className="space-y-3">
@@ -445,11 +448,28 @@ export default function ChronicleView() {
                   })}
                 </div>
               ) : (
-                <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-xs text-neutral-600">
-                  No structured-plan references are registered yet.
+                <div className="rounded-lg border border-dashed border-neutral-800 p-8 text-center text-caption text-neutral-500">
+                  No structured plans registered yet. Plans registered against an episode appear
+                  here, with Miette&apos;s perspective beside them.
                 </div>
               )}
             </div>
+
+            {snapshot.stateMachines.length > 0 ? (
+              <div>
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h3 className="font-display text-section font-semibold text-neutral-100">
+                    Registered state machines
+                  </h3>
+                  <span className="text-[11px] text-neutral-600">Medicine Wheel references</span>
+                </div>
+                <div className="space-y-3">
+                  {snapshot.stateMachines.map((machine) => (
+                    <ReferenceCard key={machine.id} reference={machine} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {snapshot.ignoredNodeCount > 0 ? (
               <p className="text-center text-[10px] text-neutral-700">
@@ -509,7 +529,7 @@ function InquiryRow({ relation }: { relation: InquiryRelation }) {
             href={relation.issueUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="rounded border border-cyan-900/60 bg-cyan-950/30 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300 transition-colors hover:border-cyan-700 hover:text-cyan-200"
+            className="rounded border border-neutral-700 bg-fw-iron-2 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300 underline decoration-neutral-600 underline-offset-2 transition-colors hover:border-neutral-500 hover:text-neutral-100"
           >
             {relation.issueRef}
           </a>
@@ -536,7 +556,7 @@ function InquiryRow({ relation }: { relation: InquiryRelation }) {
 function SectionLoading({ label }: { label: string }) {
   return (
     <p
-      className="ml-6 animate-pulse border-l border-neutral-800 pl-4 text-[10px] uppercase tracking-wide text-neutral-600"
+      className="ml-6 border-l border-neutral-800 pl-4 text-[11px] uppercase tracking-wide text-neutral-600 motion-safe:animate-pulse"
       role="status"
     >
       {label}…
@@ -554,16 +574,18 @@ function SectionError({
   onRetry: () => void;
 }) {
   return (
-    <div className="ml-6 border-l border-red-900/60 pl-4" role="alert">
-      <div className="flex flex-wrap items-center gap-2 rounded border border-red-900/50 bg-red-950/20 px-3 py-2">
-        <span className="text-[10px] uppercase tracking-wide text-red-400">{label} unavailable</span>
-        <span className="min-w-0 flex-1 truncate text-[10px] text-red-400/60" title={message}>
+    <div className="ml-6 border-l border-ember-cooling/40 pl-4" role="alert">
+      <div className="flex flex-wrap items-center gap-2 rounded border border-ember-cooling/30 bg-fw-iron px-3 py-2">
+        <span className="text-[11px] uppercase tracking-wide text-ember-cooling">
+          {label} didn&apos;t load
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-neutral-500" title={message}>
           {message}
         </span>
         <button
           type="button"
           onClick={onRetry}
-          className="rounded border border-red-800 px-2 py-0.5 text-[10px] text-red-300 transition-colors hover:border-red-600"
+          className="rounded border border-ember-cooling/50 px-2 py-0.5 text-[11px] text-ember-cooling transition-colors hover:border-ember-cooling"
         >
           Retry
         </button>
@@ -596,8 +618,8 @@ function EpisodeInquirySection({
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-neutral-800 pl-4">
-      <p className="text-[10px] uppercase tracking-wide text-neutral-500">
-        Inquiry · {section.data.count}
+      <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+        Inquiry · <span className="font-mono tabular-nums">{section.data.count}</span>
       </p>
       {section.data.inquiries.map((relation, index) => (
         <InquiryRow key={`${relation.artefact}-${index}`} relation={relation} />
@@ -617,20 +639,20 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
 
   return (
     <details className="group rounded border border-pink-900/40 bg-pink-950/10 px-3 py-2">
-      <summary className="cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-700">
+      <summary className="cursor-pointer list-none">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-sm" aria-hidden="true">🌸</span>
-          <span className="min-w-0 flex-1 truncate text-xs font-medium text-pink-200" title={perspective.title}>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-pink-200" title={perspective.title}>
             {perspective.title}
           </span>
-          <span className="rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 group-open:hidden">
-            expand
+          <span className="rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 transition-colors group-hover:border-pink-700 group-open:hidden">
+            Expand
           </span>
-          <span className="hidden rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 group-open:inline">
-            collapse
+          <span className="hidden rounded border border-pink-900/60 px-1.5 py-0.5 text-[10px] text-pink-400 transition-colors group-hover:border-pink-700 group-open:inline">
+            Collapse
           </span>
         </span>
-        <span className="mt-1 block text-[11px] leading-relaxed text-neutral-400 group-open:hidden">
+        <span className="mt-1 block text-caption leading-relaxed text-neutral-400 group-open:hidden">
           {excerpt}
         </span>
       </summary>
@@ -647,10 +669,10 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
           <Markdown className="mt-1.5">{perspective.miaContext}</Markdown>
         </aside>
       ) : null}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-600">
         <span className="font-mono">{perspective.planFilename}</span>
         {perspective.generator ? <span>{perspective.generator}</span> : null}
-        {timestamp ? <span>Updated {timestamp}</span> : null}
+        {timestamp ? <span className="font-mono tabular-nums">Updated {timestamp}</span> : null}
       </div>
     </details>
   );
@@ -680,8 +702,8 @@ function EpisodePerspectiveSection({
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
-      <p className="text-[10px] uppercase tracking-wide text-pink-500/80">
-        Miette perspective · {section.data.count}
+      <p className="text-[11px] uppercase tracking-wide text-pink-500/80">
+        Miette perspective · <span className="font-mono tabular-nums">{section.data.count}</span>
       </p>
       {section.data.perspectives.map((perspective) => (
         <PerspectiveRow key={perspective.id} perspective={perspective} />
@@ -724,7 +746,7 @@ function PlanPerspectiveSection({
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-pink-900/40 pl-4">
-      <p className="text-[10px] uppercase tracking-wide text-pink-500/80">
+      <p className="text-[11px] uppercase tracking-wide text-pink-500/80">
         Miette perspective on this plan
       </p>
       {matching.map((perspective) => (
@@ -831,19 +853,35 @@ function ColdCard({
   );
 }
 
-function InquiryWeaveMetric({ resource }: { resource: SharedResource<EpisodeInquiry> }) {
-  const value =
-    resource.status === 'ready'
-      ? resource.data?.count ?? 0
-      : resource.status === 'loading'
-        ? '…'
-        : '—';
-
+function InquiryWeaveMetric({
+  resource,
+  onRetry,
+}: {
+  resource: SharedResource<EpisodeInquiry>;
+  onRetry: () => void;
+}) {
+  if (resource.status === 'error') {
+    return (
+      <Metric
+        label="Inquiry weaves"
+        value="—"
+        title={resource.error ?? 'upstream unavailable'}
+        caption={
+          <button
+            type="button"
+            onClick={onRetry}
+            className="text-ember-cooling underline decoration-ember-cooling/50 underline-offset-2 transition-colors hover:decoration-ember-cooling"
+          >
+            No answer — retry
+          </button>
+        }
+      />
+    );
+  }
   return (
     <Metric
       label="Inquiry weaves"
-      value={value}
-      title={resource.status === 'error' ? resource.error ?? 'upstream unavailable' : undefined}
+      value={resource.status === 'loading' ? '…' : resource.data?.count ?? 0}
     />
   );
 }
@@ -851,20 +889,19 @@ function InquiryWeaveMetric({ resource }: { resource: SharedResource<EpisodeInqu
 function Metric({
   label,
   value,
-  deferred = false,
+  caption,
   title,
 }: {
   label: string;
   value: number | string;
-  deferred?: boolean;
+  caption?: ReactNode;
   title?: string;
 }) {
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3" title={title}>
-      <div className="text-xl font-semibold text-neutral-200">{value}</div>
-      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-neutral-600">
-        {label}{deferred ? ' · next slice' : ''}
-      </div>
+      <div className="font-mono text-2xl font-medium tabular-nums text-neutral-100">{value}</div>
+      <div className="mt-1 text-caption text-neutral-500">{label}</div>
+      {caption ? <div className="mt-0.5 text-[11px]">{caption}</div> : null}
     </div>
   );
 }
