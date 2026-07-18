@@ -14,7 +14,7 @@ export async function GET() {
       capabilities: {
         chronicle: 'read-only',
         structuredPlans: 'read-only',
-        stateMachines: 'deferred',
+        stateMachines: 'read-only',
         mcpHttp: 'deferred',
       },
       dependencies: {
