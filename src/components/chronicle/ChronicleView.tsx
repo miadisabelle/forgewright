@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   findParentEpisode,
   getEpisodeInquiryPath,
@@ -14,6 +14,17 @@ import {
   type PlanPerspective,
   type PlanPerspectives,
 } from '@forgewright/lib/chronicle/client';
+import {
+  collectDistinctEpisodePaths,
+  errorResource,
+  loadingResource,
+  pathsNeedingFetch,
+  projectInquirySection,
+  projectPerspectiveSection,
+  readyResource,
+  withResource,
+  type SharedResource,
+} from '@forgewright/lib/chronicle/viewCache';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
 import Markdown from './Markdown';
 
@@ -98,6 +109,159 @@ function LoadingState() {
   );
 }
 
+// ─── Shared in-view fetch cache (miadisabelle/forgewright#7) ─────────────────
+// One unfiltered inquiry request feeds the metric tile AND every episode
+// section; one perspectives request per DISTINCT episode path feeds both the
+// episode-level and plan-level sections. reloadKey invalidates every shared
+// resource; a section's Retry refetches only the shared resource it reads.
+
+interface SharedInquiry {
+  resource: SharedResource<EpisodeInquiry>;
+  retry: () => void;
+}
+
+function useSharedInquiry(reloadKey: number): SharedInquiry {
+  const [resource, setResource] = useState<SharedResource<EpisodeInquiry>>(loadingResource);
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setResource(loadingResource());
+
+    async function load() {
+      try {
+        const response = await fetch('/api/chronicle/inquiry', {
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as { data: EpisodeInquiry | null; error?: string };
+        if (!response.ok || body.data == null) {
+          throw new Error(body.error ?? `HTTP ${response.status}`);
+        }
+        if (controller.signal.aborted) return;
+        setResource(readyResource(body.data));
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setResource(
+          errorResource(loadError instanceof Error ? loadError.message : 'section unavailable'),
+        );
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [reloadKey, attempt]);
+
+  return { resource, retry };
+}
+
+interface SharedPerspectives {
+  byPath: ReadonlyMap<string, SharedResource<PlanPerspectives>>;
+  retryPath: (episodePath: string) => void;
+}
+
+interface PerspectiveGeneration {
+  generation: number;
+  requested: Set<string>;
+  controller: AbortController;
+}
+
+function useSharedPerspectives(
+  episodePaths: readonly string[],
+  reloadKey: number,
+): SharedPerspectives {
+  const [byPath, setByPath] = useState<ReadonlyMap<string, SharedResource<PlanPerspectives>>>(
+    () => new Map(),
+  );
+  const trackerRef = useRef<PerspectiveGeneration | null>(null);
+
+  const runFetch = useCallback((episodePath: string) => {
+    const tracker = trackerRef.current;
+    if (!tracker) return;
+    const { generation, controller } = tracker;
+
+    const apply = (entry: SharedResource<PlanPerspectives>) => {
+      if (controller.signal.aborted || trackerRef.current?.generation !== generation) return;
+      setByPath((previous) => withResource(previous, episodePath, entry));
+    };
+
+    async function load() {
+      try {
+        const response = await fetch(
+          `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath)}`,
+          {
+            cache: 'no-store',
+            headers: { accept: 'application/json' },
+            signal: controller.signal,
+          },
+        );
+        const body = (await response.json()) as { data: PlanPerspectives | null; error?: string };
+        if (!response.ok || body.data == null) {
+          throw new Error(body.error ?? `HTTP ${response.status}`);
+        }
+        apply(readyResource(body.data));
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        apply(
+          errorResource(loadError instanceof Error ? loadError.message : 'section unavailable'),
+        );
+      }
+    }
+
+    void load();
+  }, []);
+
+  useEffect(() => {
+    const tracker = trackerRef.current;
+    if (!tracker || tracker.generation !== reloadKey) {
+      tracker?.controller.abort();
+      trackerRef.current = {
+        generation: reloadKey,
+        requested: new Set(),
+        controller: new AbortController(),
+      };
+      setByPath(new Map());
+    }
+
+    const current = trackerRef.current!;
+    const missing = pathsNeedingFetch(current.requested, episodePaths);
+    if (missing.length === 0) return;
+
+    for (const path of missing) current.requested.add(path);
+    setByPath((previous) => {
+      let next: ReadonlyMap<string, SharedResource<PlanPerspectives>> = previous;
+      for (const path of missing) next = withResource(next, path, loadingResource());
+      return next;
+    });
+    for (const path of missing) runFetch(path);
+  }, [episodePaths, reloadKey, runFetch]);
+
+  // Unmount: abort in-flight fetches and drop the generation so a strict-mode
+  // remount starts a fresh one instead of trusting aborted requests.
+  useEffect(
+    () => () => {
+      trackerRef.current?.controller.abort();
+      trackerRef.current = null;
+    },
+    [],
+  );
+
+  const retryPath = useCallback(
+    (episodePath: string) => {
+      const tracker = trackerRef.current;
+      if (!tracker) return;
+      tracker.requested.add(episodePath);
+      setByPath((previous) => withResource(previous, episodePath, loadingResource()));
+      runFetch(episodePath);
+    },
+    [runFetch],
+  );
+
+  return { byPath, retryPath };
+}
+
 export default function ChronicleView() {
   const [snapshot, setSnapshot] = useState<ChronicleSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +272,13 @@ export default function ChronicleView() {
   const refresh = useCallback(() => {
     setReloadKey((value) => value + 1);
   }, []);
+
+  const sharedInquiry = useSharedInquiry(reloadKey);
+  const episodePaths = useMemo(
+    () => (snapshot ? collectDistinctEpisodePaths(snapshot.episodes) : []),
+    [snapshot],
+  );
+  const sharedPerspectives = useSharedPerspectives(episodePaths, reloadKey);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -198,7 +369,7 @@ export default function ChronicleView() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
-              <InquiryWeaveMetric reloadKey={reloadKey} />
+              <InquiryWeaveMetric resource={sharedInquiry.resource} />
               <Metric label="State machines" value={snapshot.stateMachines.length} deferred />
             </div>
 
@@ -232,11 +403,11 @@ export default function ChronicleView() {
                       <ReferenceCard reference={episode} />
                       <EpisodeInquirySection
                         episodePath={getEpisodeInquiryPath(episode)}
-                        reloadKey={reloadKey}
+                        inquiry={sharedInquiry}
                       />
                       <EpisodePerspectiveSection
                         episodePath={getEpisodeInquiryPath(episode)}
-                        reloadKey={reloadKey}
+                        perspectives={sharedPerspectives}
                       />
                     </div>
                   ))}
@@ -265,7 +436,7 @@ export default function ChronicleView() {
                         <PlanPerspectiveSection
                           plan={plan}
                           parentEpisode={parentEpisode}
-                          reloadKey={reloadKey}
+                          perspectives={sharedPerspectives}
                         />
                       </div>
                     );
@@ -358,82 +529,6 @@ function InquiryRow({ relation }: { relation: InquiryRelation }) {
   );
 }
 
-// ─── Per-section lifecycle ───────────────────────────────────────────────────
-// Every nested Chronicle section moves through loading | error | empty | ready.
-// Empty (count 0) stays quiet; error surfaces with its own retry, so an
-// unreachable upstream never masquerades as "nothing registered".
-
-type SectionStatus = 'loading' | 'error' | 'empty' | 'ready';
-
-interface SectionState<T> {
-  status: SectionStatus;
-  data: T | null;
-  error: string | null;
-  retry: () => void;
-}
-
-function useChronicleSection<T>(
-  url: string | null,
-  reloadKey: number,
-  isEmpty: (data: T) => boolean,
-): SectionState<T> {
-  const [state, setState] = useState<Omit<SectionState<T>, 'retry'>>({
-    status: 'loading',
-    data: null,
-    error: null,
-  });
-  const [attempt, setAttempt] = useState(0);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-
-  useEffect(() => {
-    if (!url) {
-      setState({ status: 'empty', data: null, error: null });
-      return;
-    }
-
-    const controller = new AbortController();
-    setState({ status: 'loading', data: null, error: null });
-
-    async function load() {
-      try {
-        const response = await fetch(url!, {
-          cache: 'no-store',
-          headers: { accept: 'application/json' },
-          signal: controller.signal,
-        });
-        const body = (await response.json()) as { data: T | null; error?: string };
-        if (!response.ok || body.data == null) {
-          throw new Error(body.error ?? `HTTP ${response.status}`);
-        }
-        if (controller.signal.aborted) return;
-        setState({
-          status: isEmpty(body.data) ? 'empty' : 'ready',
-          data: body.data,
-          error: null,
-        });
-      } catch (loadError) {
-        if (controller.signal.aborted) return;
-        setState({
-          status: 'error',
-          data: null,
-          error: loadError instanceof Error ? loadError.message : 'section unavailable',
-        });
-      }
-    }
-
-    void load();
-    return () => controller.abort();
-    // isEmpty is a module-level predicate; listing it keeps the linter honest.
-  }, [url, reloadKey, attempt, isEmpty]);
-
-  return { ...state, retry };
-}
-
-const inquiryIsEmpty = (data: EpisodeInquiry) => data.count === 0;
-const perspectivesAreEmpty = (data: PlanPerspectives) => data.count === 0;
-const neverEmpty = () => false;
-
 function SectionLoading({ label }: { label: string }) {
   return (
     <p
@@ -475,16 +570,12 @@ function SectionError({
 
 function EpisodeInquirySection({
   episodePath,
-  reloadKey,
+  inquiry,
 }: {
   episodePath: string;
-  reloadKey: number;
+  inquiry: SharedInquiry;
 }) {
-  const section = useChronicleSection<EpisodeInquiry>(
-    `/api/chronicle/inquiry?episode_path=${encodeURIComponent(episodePath)}`,
-    reloadKey,
-    inquiryIsEmpty,
-  );
+  const section = projectInquirySection(inquiry.resource, episodePath);
 
   if (section.status === 'loading') return <SectionLoading label="Inquiry" />;
   if (section.status === 'error') {
@@ -492,7 +583,7 @@ function EpisodeInquirySection({
       <SectionError
         label="Inquiry"
         message={section.error ?? 'upstream unavailable'}
-        onRetry={section.retry}
+        onRetry={inquiry.retry}
       />
     );
   }
@@ -557,27 +648,14 @@ function PerspectiveRow({ perspective }: { perspective: PlanPerspective }) {
   );
 }
 
-function usePlanPerspectiveSection(
-  episodePath: string | null,
-  reloadKey: number,
-): SectionState<PlanPerspectives> {
-  return useChronicleSection<PlanPerspectives>(
-    episodePath
-      ? `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath)}`
-      : null,
-    reloadKey,
-    perspectivesAreEmpty,
-  );
-}
-
 function EpisodePerspectiveSection({
   episodePath,
-  reloadKey,
+  perspectives,
 }: {
   episodePath: string;
-  reloadKey: number;
+  perspectives: SharedPerspectives;
 }) {
-  const section = usePlanPerspectiveSection(episodePath, reloadKey);
+  const section = projectPerspectiveSection(perspectives.byPath.get(episodePath));
 
   if (section.status === 'loading') return <SectionLoading label="Miette perspective" />;
   if (section.status === 'error') {
@@ -585,7 +663,7 @@ function EpisodePerspectiveSection({
       <SectionError
         label="Miette perspective"
         message={section.error ?? 'upstream unavailable'}
-        onRetry={section.retry}
+        onRetry={() => perspectives.retryPath(episodePath)}
       />
     );
   }
@@ -607,16 +685,17 @@ function EpisodePerspectiveSection({
 function PlanPerspectiveSection({
   plan,
   parentEpisode,
-  reloadKey,
+  perspectives,
 }: {
   plan: ChronicleArtifactReference;
   parentEpisode: ChronicleArtifactReference | null;
-  reloadKey: number;
+  perspectives: SharedPerspectives;
 }) {
-  const section = usePlanPerspectiveSection(
-    parentEpisode ? getEpisodeInquiryPath(parentEpisode) : null,
-    reloadKey,
-  );
+  // No episode association → no path to read from; stay quiet like before.
+  if (!parentEpisode) return null;
+
+  const episodePath = getEpisodeInquiryPath(parentEpisode);
+  const section = projectPerspectiveSection(perspectives.byPath.get(episodePath));
 
   if (section.status === 'loading') return <SectionLoading label="Miette perspective" />;
   if (section.status === 'error') {
@@ -624,7 +703,7 @@ function PlanPerspectiveSection({
       <SectionError
         label="Miette perspective"
         message={section.error ?? 'upstream unavailable'}
-        onRetry={section.retry}
+        onRetry={() => perspectives.retryPath(episodePath)}
       />
     );
   }
@@ -668,17 +747,11 @@ function SourceBanner({ source }: { source: ChronicleSnapshot['source'] }) {
   );
 }
 
-function InquiryWeaveMetric({ reloadKey }: { reloadKey: number }) {
-  const section = useChronicleSection<EpisodeInquiry>(
-    '/api/chronicle/inquiry',
-    reloadKey,
-    neverEmpty,
-  );
-
+function InquiryWeaveMetric({ resource }: { resource: SharedResource<EpisodeInquiry> }) {
   const value =
-    section.status === 'ready'
-      ? section.data?.count ?? 0
-      : section.status === 'loading'
+    resource.status === 'ready'
+      ? resource.data?.count ?? 0
+      : resource.status === 'loading'
         ? '…'
         : '—';
 
@@ -686,7 +759,7 @@ function InquiryWeaveMetric({ reloadKey }: { reloadKey: number }) {
     <Metric
       label="Inquiry weaves"
       value={value}
-      title={section.status === 'error' ? section.error ?? 'upstream unavailable' : undefined}
+      title={resource.status === 'error' ? resource.error ?? 'upstream unavailable' : undefined}
     />
   );
 }
