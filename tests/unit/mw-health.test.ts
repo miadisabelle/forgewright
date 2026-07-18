@@ -39,12 +39,24 @@ describe('heatForStatus', () => {
 });
 
 describe('readProbe', () => {
-  it('reads a healthy body as ok and keeps the upstream origin', () => {
+  it('reads a healthy body as ok with origin and registry counts', () => {
     const reading = readProbe(true, {
       status: 'healthy',
       dependencies: { medicineWheel: { baseUrl: 'http://127.0.0.1:3940' } },
+      counts: { episodes: 3, structuredPlans: 2, stateMachines: 1 },
     });
-    expect(reading).toEqual({ ok: true, baseUrl: 'http://127.0.0.1:3940', error: null });
+    expect(reading).toEqual({
+      ok: true,
+      baseUrl: 'http://127.0.0.1:3940',
+      counts: { episodes: 3, structuredPlans: 2, stateMachines: 1 },
+      error: null,
+    });
+  });
+
+  it('a healthy body with malformed counts stays ok, counts null', () => {
+    const reading = readProbe(true, { status: 'healthy', counts: { episodes: 'three' } });
+    expect(reading.ok).toBe(true);
+    expect(reading.counts).toBeNull();
   });
 
   it('a 503 body reports its own error message', () => {
@@ -58,7 +70,12 @@ describe('readProbe', () => {
   });
 
   it('a malformed or missing body fails with a generic message', () => {
-    expect(readProbe(false, null)).toEqual({ ok: false, baseUrl: null, error: 'health check failed' });
+    expect(readProbe(false, null)).toEqual({
+      ok: false,
+      baseUrl: null,
+      counts: null,
+      error: 'health check failed',
+    });
   });
 });
 
@@ -72,7 +89,7 @@ describe('MW_HEAT presentation', () => {
     for (const presentation of Object.values(MW_HEAT)) {
       expect(presentation.label.length).toBeGreaterThan(0);
       expect(presentation.description.length).toBeGreaterThan(0);
-      expect(presentation.dotClassName).toContain('bg-');
+      expect(presentation.dotClassName.length).toBeGreaterThan(0);
       expect(presentation.textClassName).toContain('text-');
     }
   });

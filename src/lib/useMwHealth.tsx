@@ -15,15 +15,20 @@
 //   MW_HEAT[heat]                          // shared label / description / classes
 //   <MwHeatDot heat={health.heat} />       // the ember itself — identical everywhere
 //
-// `--fw-ember` / `--fw-ember-glow` come from src/styles/globals.css (specialist
-// B's token pass); every use here carries a literal fallback so the vocabulary
-// holds before the tokens land. `--fw-ember-glow` is consumed as a COLOR inside
-// a box-shadow, not as a full shadow value.
+// The ember's pixels live in src/styles/globals.css (`.fw-ember-dot`,
+// `.fw-cooling-dot`, ember breathing + reduced-motion guard) — this module
+// only decides WHICH heat a surface wears, never how the ember glows.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type MwHeat = 'ember' | 'cooling' | 'cold';
 export type MwHealthStatus = 'checking' | 'live' | 'degraded' | 'down';
+
+export interface MwRegistryCounts {
+  episodes: number;
+  structuredPlans: number;
+  stateMachines: number;
+}
 
 export interface MwHealthSnapshot {
   status: MwHealthStatus;
@@ -31,6 +36,8 @@ export interface MwHealthSnapshot {
   heat: MwHeat | null;
   /** Upstream Medicine Wheel origin, kept from the last probe that reported one. */
   baseUrl: string | null;
+  /** Chronicle registry counts from the last LIVE probe; null until one succeeds. */
+  counts: MwRegistryCounts | null;
   /** What the failed probe said; null while checking or live. */
   error: string | null;
   /** ISO timestamp of the last completed probe. */
@@ -52,22 +59,22 @@ export const MW_HEAT: Record<MwHeat, MwHeatPresentation> = {
   ember: {
     label: 'Live',
     description: 'The Medicine Wheel answers.',
-    dotClassName: 'bg-[var(--fw-ember,#FF6D3B)]',
-    textClassName: 'text-[var(--fw-ember,#FF6D3B)]',
+    dotClassName: 'fw-ember-dot',
+    textClassName: 'text-ember',
     glows: true,
   },
   cooling: {
     label: 'Cooling',
     description: 'The Medicine Wheel stopped answering. What you see is its last answer.',
-    dotClassName: 'bg-[#A8623F]',
-    textClassName: 'text-[#D89B77]',
+    dotClassName: 'fw-cooling-dot',
+    textClassName: 'text-ember-cooling',
     glows: false,
   },
   cold: {
     label: 'Cold',
     description: 'The Medicine Wheel is not answering.',
-    dotClassName: 'bg-[#4A443F]',
-    textClassName: 'text-[var(--fw-ash,#A69E97)]',
+    dotClassName: 'bg-neutral-600',
+    textClassName: 'text-neutral-400',
     glows: false,
   },
 };
@@ -97,12 +104,30 @@ interface HealthBody {
   status?: unknown;
   error?: unknown;
   dependencies?: { medicineWheel?: { baseUrl?: unknown } };
+  counts?: { episodes?: unknown; structuredPlans?: unknown; stateMachines?: unknown };
 }
 
 export interface ProbeReading {
   ok: boolean;
   baseUrl: string | null;
+  counts: MwRegistryCounts | null;
   error: string | null;
+}
+
+function readCounts(body: HealthBody | null): MwRegistryCounts | null {
+  const counts = body?.counts;
+  if (
+    typeof counts?.episodes !== 'number' ||
+    typeof counts.structuredPlans !== 'number' ||
+    typeof counts.stateMachines !== 'number'
+  ) {
+    return null;
+  }
+  return {
+    episodes: counts.episodes,
+    structuredPlans: counts.structuredPlans,
+    stateMachines: counts.stateMachines,
+  };
 }
 
 /** Read one GET /api/health response body into a probe verdict. */
@@ -112,44 +137,26 @@ export function readProbe(httpOk: boolean, body: HealthBody | null): ProbeReadin
       ? body.dependencies.medicineWheel.baseUrl
       : null;
   if (httpOk && body?.status === 'healthy') {
-    return { ok: true, baseUrl, error: null };
+    return { ok: true, baseUrl, counts: readCounts(body), error: null };
   }
   const error =
     typeof body?.error === 'string' && body.error.length > 0
       ? body.error
       : 'health check failed';
-  return { ok: false, baseUrl, error };
+  return { ok: false, baseUrl, counts: null, error };
 }
 
 // ─── The dot ──────────────────────────────────────────────────────────────────
 
 /**
- * The ember itself. Ember glows and breathes; with `prefers-reduced-motion`
- * it is a static dot — still ember-colored, never animated. Cooling and cold
- * never glow. `heat === null` renders a quiet checking dot.
+ * The ember itself. `.fw-ember-dot` breathes and glows (globals.css owns the
+ * animation and its reduced-motion guard — static dot, still ember-colored);
+ * cooling and cold never glow. `heat === null` renders a quiet checking dot.
  */
 export function MwHeatDot({ heat, className = 'h-2 w-2' }: { heat: MwHeat | null; className?: string }) {
-  if (heat === null) {
-    return (
-      <span
-        aria-hidden="true"
-        className={`inline-block rounded-full bg-neutral-700 ${className}`}
-      />
-    );
-  }
-  const presentation = MW_HEAT[heat];
+  const dotClassName = heat === null ? 'bg-neutral-700' : MW_HEAT[heat].dotClassName;
   return (
-    <span
-      aria-hidden="true"
-      className={`inline-block rounded-full ${presentation.dotClassName} ${
-        presentation.glows ? 'motion-safe:animate-pulse' : ''
-      } ${className}`}
-      style={
-        presentation.glows
-          ? { boxShadow: '0 0 6px 1px var(--fw-ember-glow, rgba(255, 109, 59, 0.55))' }
-          : undefined
-      }
-    />
+    <span aria-hidden="true" className={`inline-block rounded-full ${dotClassName} ${className}`} />
   );
 }
 
@@ -170,6 +177,7 @@ export function useMwHealth(options: UseMwHealthOptions = {}): MwHealthSnapshot 
     status: 'checking',
     heat: null,
     baseUrl: null,
+    counts: null,
     error: null,
     checkedAt: null,
   });
@@ -195,6 +203,7 @@ export function useMwHealth(options: UseMwHealthOptions = {}): MwHealthSnapshot 
         reading = {
           ok: false,
           baseUrl: null,
+          counts: null,
           error: probeError instanceof Error ? probeError.message : 'health check failed',
         };
       }
@@ -206,6 +215,8 @@ export function useMwHealth(options: UseMwHealthOptions = {}): MwHealthSnapshot 
         status,
         heat: heatForStatus(status),
         baseUrl: reading.baseUrl ?? previous.baseUrl,
+        // Cooling keeps showing the last live counts — that IS the stale answer.
+        counts: reading.counts ?? previous.counts,
         error: reading.error,
         checkedAt: new Date().toISOString(),
       }));
