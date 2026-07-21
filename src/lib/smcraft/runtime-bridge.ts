@@ -11,6 +11,11 @@ import type {
   StateDef,
   StateMachineEvent,
 } from '../types/smdf';
+import {
+  createRuntimeBridge,
+  isBridgeEnabled,
+  type RuntimeBridge,
+} from './forgewright-bridge';
 
 // ─── Runtime interface (what we expose regardless of backend) ────────────────
 
@@ -68,6 +73,12 @@ export interface CreateMachineOptions {
   context?: Record<string, unknown>;
   /** Custom guard evaluation; overrides the default context lookup. */
   guard?: GuardFn;
+  /**
+   * Stable doc id shared with runtime-diagram viewers (WS8). Defaults to the
+   * definition's `namespace(.name)`. Only used when the live bridge is enabled
+   * via NEXT_PUBLIC_SMCRAFT_BRIDGE_URL.
+   */
+  bridgeDocId?: string;
 }
 
 type SmcraftRuntime = {
@@ -106,6 +117,34 @@ const _engines = new Map<string, SmcraftMachineHandle>();
 // Standalone fallback keeps the same fail-closed guard semantics; per-machine
 // guard + context live here, keyed by machine id.
 const _guards = new Map<string, { guard: GuardFn; context: Record<string, unknown> }>();
+
+// WS8: live runtime-diagram bridge per machine, keyed by machine id. Present
+// only when NEXT_PUBLIC_SMCRAFT_BRIDGE_URL is set; otherwise the map stays
+// empty and every emit below is a no-op.
+const _bridges = new Map<string, RuntimeBridge>();
+
+/**
+ * Mirror a successful leaf transition onto the live bridge so viewers highlight
+ * the new active state. Presentational and best-effort — a bridge failure never
+ * touches the interpreter's verdict.
+ */
+function emitBridgeTransition(
+  machineId: string,
+  previousState: string,
+  currentState: string,
+  eventId: string,
+  changed: boolean,
+): void {
+  if (!changed) return;
+  const bridge = _bridges.get(machineId);
+  if (!bridge) return;
+  try {
+    bridge.exit(previousState);
+    bridge.enter(currentState, previousState, eventId);
+  } catch {
+    // never break the interpreter over a presentational emit
+  }
+}
 
 // ─── Standalone Runtime ──────────────────────────────────────────────────────
 // Lightweight runtime that tracks state transitions without smcraft dependency.
@@ -210,6 +249,26 @@ export async function createMachine(
   if (engine) _engines.set(id, engine);
   _guards.set(id, { guard: options.guard ?? defaultGuard, context: options.context ?? {} });
   _machines.set(id, instance);
+
+  // WS8: open the live runtime-diagram bridge (no-op unless the bridge URL is
+  // set). Seeds the graph + initial leaf for viewers; best-effort throughout.
+  if (isBridgeEnabled()) {
+    const docId =
+      options.bridgeDocId ??
+      `${definition.settings.namespace}${definition.settings.name ? `.${definition.settings.name}` : ''}`;
+    try {
+      const bridge = await createRuntimeBridge({
+        docId,
+        name: definition.settings.name,
+        definition,
+        initialState,
+      });
+      if (bridge.enabled) _bridges.set(id, bridge);
+    } catch {
+      // never block machine creation on the presentational bridge
+    }
+  }
+
   return instance;
 }
 
@@ -260,6 +319,9 @@ export function fireEvent(
       machine.stateHistory.push(result.to);
     }
     if (engine.done) machine.isRunning = false;
+
+    // WS8: light the newly-entered leaf on the live design canvas.
+    emitBridgeTransition(machine.id, result.from, machine.currentState, eventId, result.changed);
 
     return {
       success: result.changed,
@@ -332,6 +394,9 @@ export function fireEvent(
     }
   }
 
+  // WS8: light the newly-entered leaf on the live design canvas.
+  emitBridgeTransition(machine.id, previousState, machine.currentState, eventId, changed);
+
   return {
     success: changed,
     previousState,
@@ -386,6 +451,12 @@ export function destroyMachine(id: string): boolean {
     _engines.delete(id);
   }
   _guards.delete(id);
+  // WS8: tear down the live bridge for this machine, if any.
+  const bridge = _bridges.get(id);
+  if (bridge) {
+    bridge.disconnect();
+    _bridges.delete(id);
+  }
   const machine = _machines.get(id);
   if (machine) {
     machine.isRunning = false;

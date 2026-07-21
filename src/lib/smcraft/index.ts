@@ -21,5 +21,9 @@ export type { SyncResult, SyncChange } from './stc-adapter';
 export { createMachine, fireEvent, getCurrentState, getMachine, destroyMachine, getRuntimeBackend } from './runtime-bridge';
 export type { MachineInstance, TransitionResult } from './runtime-bridge';
 
+// WS8: live runtime-diagram bridge (presentational, gated on NEXT_PUBLIC_SMCRAFT_BRIDGE_URL)
+export { createRuntimeBridge, isBridgeEnabled, getBridgeUrl } from './forgewright-bridge';
+export type { RuntimeBridge, CreateRuntimeBridgeOptions } from './forgewright-bridge';
+
 export { generateCode, getCodegenBackend } from './codegen-bridge';
 export type { CodegenLanguage } from './codegen-bridge';
