@@ -42,12 +42,12 @@ describe('readProbe', () => {
   it('reads a healthy body as ok with origin and registry counts', () => {
     const reading = readProbe(true, {
       status: 'healthy',
-      dependencies: { medicineWheel: { baseUrl: 'http://127.0.0.1:3940' } },
+      dependencies: { medicineWheel: { baseUrl: 'http://127.0.0.1:8040' } },
       counts: { episodes: 3, structuredPlans: 2, stateMachines: 1 },
     });
     expect(reading).toEqual({
       ok: true,
-      baseUrl: 'http://127.0.0.1:3940',
+      baseUrl: 'http://127.0.0.1:8040',
       counts: { episodes: 3, structuredPlans: 2, stateMachines: 1 },
       error: null,
     });

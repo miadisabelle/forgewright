@@ -18,7 +18,7 @@ Forgewright reads Chronicle data **read-only over HTTP** from a single Medicine 
 
 **Read path as it exists today** (`src/lib/chronicle/client.ts` → `getChronicleSnapshot()`):
 
-1. Resolves an origin from `MW_API_URL` (default `http://127.0.0.1:3940`). The origin must be a bare `http(s)` origin — no credentials, path, query, or fragment.
+1. Resolves an origin from `MW_API_URL` (default `http://127.0.0.1:8040`). The origin must be a bare `http(s)` origin — no credentials, path, query, or fragment.
 2. Concurrently fetches `/api/health` (must report `status: 'healthy'`, `provider: 'jsonl'`) and `/api/nodes`.
 3. Filters `/api/nodes` down to nodes that satisfy the **artifact-reference contract**:
    - `type === 'knowledge'`
@@ -65,8 +65,8 @@ Forgewright consumes weaves through the origin it already uses. Two aligned surf
 
 | Surface | Where | Role for this spec |
 |---|---|---|
-| **HTTP origin** `MW_API_URL` | `http://192.168.2.30:3940` (deployment); `http://127.0.0.1:3940` (client default) | The **active read path**. `getChronicleSnapshot()` fetches `/api/health` + `/api/nodes` here. This is where weave nodes must appear. |
-| **MCP server** `medicine-wheel-miadi-chronicle` | `/a/src/Miadi/etc/mcp-config-mw-ilex.json` — `npx -y ${MWCV}`, `MW_API_URL=http://192.168.2.30:3940` | The stdio tool surface over the **same store** (kin to spec 04). Named here as the alternate/agent read path; the chronicle view uses the HTTP origin directly, not MCP. Both must observe identical weave records. |
+| **HTTP origin** `MW_API_URL` | `http://127.0.0.1:8040` (deployment); `http://127.0.0.1:8040` (client default) | The **active read path**. `getChronicleSnapshot()` fetches `/api/health` + `/api/nodes` here. This is where weave nodes must appear. |
+| **MCP server** `medicine-wheel-miadi-chronicle` | `/a/src/Miadi/etc/mcp-config-mw-ilex.json` — `npx -y ${MWCV}`, `MW_API_URL=http://127.0.0.1:8040` | The stdio tool surface over the **same store** (kin to spec 04). Named here as the alternate/agent read path; the chronicle view uses the HTTP origin directly, not MCP. Both must observe identical weave records. |
 
 **Weave read contract.** A weave is a *relation record*, not a filesystem artifact, so it is projected as its own contract rather than overloading `miadi.artifact-ref.v1`. Medicine Wheel MUST serve weave nodes from `/api/nodes` such that Forgewright's client can recognize them:
 

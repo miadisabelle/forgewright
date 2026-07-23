@@ -48,7 +48,7 @@ describe('getEpisodeInquiry', () => {
     const fetchImpl = createInquiryFetch(weavePayload);
 
     const result = await getEpisodeInquiry(EP_PATH, {
-      baseUrl: 'http://192.168.2.30:3940/',
+      baseUrl: 'http://127.0.0.1:8040/',
       fetchImpl,
     });
 
@@ -66,12 +66,12 @@ describe('getEpisodeInquiry', () => {
   it('queries the pinned endpoint with an encoded episode_path filter', async () => {
     const fetchImpl = createInquiryFetch(weavePayload);
 
-    await getEpisodeInquiry(EP_PATH, { baseUrl: 'http://192.168.2.30:3940', fetchImpl });
+    await getEpisodeInquiry(EP_PATH, { baseUrl: 'http://127.0.0.1:8040', fetchImpl });
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const calledUrl = String((fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0]);
     expect(calledUrl).toBe(
-      `http://192.168.2.30:3940/api/inquiry-weaves?episode_path=${encodeURIComponent(EP_PATH)}`,
+      `http://127.0.0.1:8040/api/inquiry-weaves?episode_path=${encodeURIComponent(EP_PATH)}`,
     );
   });
 
@@ -129,12 +129,12 @@ describe('getEpisodeInquiry', () => {
     });
 
     const result = await getEpisodeInquiry(null, {
-      baseUrl: 'http://192.168.2.30:3940',
+      baseUrl: 'http://127.0.0.1:8040',
       fetchImpl,
     });
 
     const calledUrl = String((fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0]);
-    expect(calledUrl).toBe('http://192.168.2.30:3940/api/inquiry-weaves');
+    expect(calledUrl).toBe('http://127.0.0.1:8040/api/inquiry-weaves');
     expect(result.episodePath).toBeNull();
     expect(result.count).toBe(2);
   });

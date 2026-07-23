@@ -54,7 +54,7 @@ function WheelStatus({
       {health.heat === 'cold' && (
         <>
           <span className="text-neutral-500">
-            — start medicine-wheel at {health.baseUrl ?? ':3940'}
+            — start medicine-wheel at {health.baseUrl ?? ':8040'}
           </span>
           <button
             onClick={refresh}

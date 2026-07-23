@@ -1,4 +1,4 @@
-const DEFAULT_MEDICINE_WHEEL_URL = 'http://127.0.0.1:3940';
+const DEFAULT_MEDICINE_WHEEL_URL = 'http://127.0.0.1:8040';
 const ARTIFACT_CONTRACT = 'miadi.artifact-ref.v1';
 
 const ARTIFACT_KINDS = [

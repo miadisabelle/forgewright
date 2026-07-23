@@ -65,7 +65,7 @@ describe('getPlanPerspectives', () => {
 
     const result = await getPlanPerspectives(
       { episodePath: EP_PATH },
-      { baseUrl: 'http://192.168.2.30:3940', fetchImpl },
+      { baseUrl: 'http://127.0.0.1:8040', fetchImpl },
     );
 
     expect(result.count).toBe(1);
