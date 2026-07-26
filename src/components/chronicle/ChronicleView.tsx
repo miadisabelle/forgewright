@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   findParentEpisode,
   getEpisodeInquiryPath,
@@ -14,17 +14,27 @@ import {
   type PlanPerspective,
   type PlanPerspectives,
 } from '@forgewright/lib/chronicle/client';
+import type { ChronicleBeats } from '@forgewright/lib/chronicle/client';
 import {
   collectDistinctEpisodePaths,
   errorResource,
   loadingResource,
   pathsNeedingFetch,
+  projectBeatSection,
   projectInquirySection,
   projectPerspectiveSection,
+  projectUnclaimedBeatSection,
   readyResource,
   withResource,
+  type SectionProjection,
   type SharedResource,
 } from '@forgewright/lib/chronicle/viewCache';
+import {
+  resolveChronicleRoute,
+  routesEqual,
+  type ChronicleParam,
+} from '@forgewright/lib/chronicle/navigation';
+import { useChronicleRoute } from '@forgewright/lib/chronicle/useChronicleRoute';
 import { DIRECTIONS } from '@forgewright/lib/types/directions';
 import {
   MW_HEAT,
@@ -34,21 +44,18 @@ import {
   type MwHeat,
 } from '@forgewright/lib/useMwHealth';
 import Markdown from './Markdown';
+import {
+  EpisodeBeatsSection,
+  NarrativeBeatMetric,
+  UnassociatedBeatsSection,
+  type BeatNavigation,
+} from './NarrativeBeats';
+import { formatTimestamp, Metric, SectionError, SectionLoading } from './sections';
 
 interface ChronicleApiResponse {
   data: ChronicleSnapshot | null;
   error?: string;
   source?: ChronicleSourceInfo;
-}
-
-function formatTimestamp(value?: string): string | null {
-  if (!value) return null;
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return null;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(timestamp);
 }
 
 function ReferenceCard({
@@ -144,6 +151,53 @@ function useSharedInquiry(reloadKey: number): SharedInquiry {
           signal: controller.signal,
         });
         const body = (await response.json()) as { data: EpisodeInquiry | null; error?: string };
+        if (!response.ok || body.data == null) {
+          throw new Error(body.error ?? `HTTP ${response.status}`);
+        }
+        if (controller.signal.aborted) return;
+        setResource(readyResource(body.data));
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setResource(
+          errorResource(loadError instanceof Error ? loadError.message : 'section unavailable'),
+        );
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [reloadKey, attempt]);
+
+  return { resource, retry };
+}
+
+interface SharedBeats {
+  resource: SharedResource<ChronicleBeats>;
+  retry: () => void;
+}
+
+/**
+ * ONE unfiltered beat probe per view (spec 11, A3). The wheel serves no beat
+ * filters yet, so every episode section, the unbound lane, and the metric tile
+ * project from this single answer rather than refetching per card.
+ */
+function useSharedBeats(reloadKey: number): SharedBeats {
+  const [resource, setResource] = useState<SharedResource<ChronicleBeats>>(loadingResource);
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setResource(loadingResource());
+
+    async function load() {
+      try {
+        const response = await fetch('/api/chronicle/beats', {
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as { data: ChronicleBeats | null; error?: string };
         if (!response.ok || body.data == null) {
           throw new Error(body.error ?? `HTTP ${response.status}`);
         }
@@ -281,11 +335,69 @@ export default function ChronicleView() {
   }, []);
 
   const sharedInquiry = useSharedInquiry(reloadKey);
+  const sharedBeats = useSharedBeats(reloadKey);
   const episodePaths = useMemo(
     () => (snapshot ? collectDistinctEpisodePaths(snapshot.episodes) : []),
     [snapshot],
   );
   const sharedPerspectives = useSharedPerspectives(episodePaths, reloadKey);
+
+  // ─── Where the reader is standing (spec 11.2) ──────────────────────────────
+  // The URL is the position. It is canonicalized against what the wheel served,
+  // and an unresolvable parameter degrades to its nearest resolvable ancestor
+  // with an explicit note — never a blank view, never a silent drop to root.
+  const { route, navigate, back, replace } = useChronicleRoute();
+  const beatData = sharedBeats.resource.data;
+
+  const resolved = useMemo(() => {
+    if (!beatData || !snapshot) return { route, unresolved: [] as ChronicleParam[] };
+    const beatIndex = new Map(beatData.beats.map((beat) => [beat.id, beat]));
+    return resolveChronicleRoute(route, {
+      hasEpisode: (path) => episodePaths.includes(path),
+      hasCycle: (cycleId) => beatData.cycles.some((cycle) => cycle.id === cycleId),
+      getBeat: (beatId) => beatIndex.get(beatId),
+      episodeForCycle: (cycleId) => {
+        for (const path of episodePaths) {
+          const scoped = projectBeatSection(sharedBeats.resource, path);
+          if (scoped.data?.cycles.some((cycle) => cycle.id === cycleId)) return path;
+        }
+        return null;
+      },
+    });
+  }, [route, beatData, snapshot, episodePaths, sharedBeats.resource]);
+
+  // The canonical rewrite makes the unresolved parameter disappear from the URL,
+  // so the note is held here until the reader moves on their own. A link that
+  // could not be honoured says so; it does not quietly become a different link.
+  const [degraded, setDegraded] = useState<ChronicleParam[]>([]);
+
+  useEffect(() => {
+    if (route.view !== 'chronicle') return;
+    if (routesEqual(route, resolved.route)) return;
+    if (resolved.unresolved.length > 0) setDegraded(resolved.unresolved);
+    replace(resolved.route);
+  }, [route, resolved, replace]);
+
+  const beatNav: BeatNavigation = useMemo(
+    () => ({
+      route: resolved.route,
+      navigate: (next) => {
+        setDegraded([]);
+        navigate(next);
+      },
+      back: () => {
+        setDegraded([]);
+        back();
+      },
+      unresolved: resolved.unresolved.length > 0 ? resolved.unresolved : degraded,
+    }),
+    [resolved.route, resolved.unresolved, degraded, navigate, back],
+  );
+
+  const unassociatedBeats: SectionProjection<ChronicleBeats> = useMemo(
+    () => projectUnclaimedBeatSection(sharedBeats.resource, episodePaths),
+    [sharedBeats.resource, episodePaths],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -368,10 +480,21 @@ export default function ChronicleView() {
               onRetry={refresh}
             />
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {beatNav.unresolved.length > 0 ? (
+              <p
+                className="rounded-lg border border-ember-cooling/30 bg-fw-iron px-4 py-2.5 text-caption text-ember-cooling"
+                role="alert"
+              >
+                could not resolve {beatNav.unresolved.join(', ')} — this link degraded to the
+                nearest step the wheel still serves
+              </p>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
               <InquiryWeaveMetric resource={sharedInquiry.resource} onRetry={sharedInquiry.retry} />
+              <NarrativeBeatMetric resource={sharedBeats.resource} onRetry={sharedBeats.retry} />
               <Metric label="State machines" value={snapshot.stateMachines.length} />
             </div>
 
@@ -408,6 +531,15 @@ export default function ChronicleView() {
                       <EpisodeInquirySection
                         episodePath={getEpisodeInquiryPath(episode)}
                         inquiry={sharedInquiry}
+                      />
+                      <EpisodeBeatsSection
+                        episodePath={getEpisodeInquiryPath(episode)}
+                        section={projectBeatSection(
+                          sharedBeats.resource,
+                          getEpisodeInquiryPath(episode),
+                        )}
+                        nav={beatNav}
+                        onRetry={sharedBeats.retry}
                       />
                       <EpisodePerspectiveSection
                         episodePath={getEpisodeInquiryPath(episode)}
@@ -454,6 +586,12 @@ export default function ChronicleView() {
                 </div>
               )}
             </div>
+
+            <UnassociatedBeatsSection
+              section={unassociatedBeats}
+              nav={beatNav}
+              onRetry={sharedBeats.retry}
+            />
 
             {snapshot.stateMachines.length > 0 ? (
               <div>
@@ -549,47 +687,6 @@ function InquiryRow({ relation }: { relation: InquiryRelation }) {
       >
         {sync.glyph} {sync.label}
       </span>
-    </div>
-  );
-}
-
-function SectionLoading({ label }: { label: string }) {
-  return (
-    <p
-      className="ml-6 border-l border-neutral-800 pl-4 text-[11px] uppercase tracking-wide text-neutral-600 motion-safe:animate-pulse"
-      role="status"
-    >
-      {label}…
-    </p>
-  );
-}
-
-function SectionError({
-  label,
-  message,
-  onRetry,
-}: {
-  label: string;
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="ml-6 border-l border-ember-cooling/40 pl-4" role="alert">
-      <div className="flex flex-wrap items-center gap-2 rounded border border-ember-cooling/30 bg-fw-iron px-3 py-2">
-        <span className="text-[11px] uppercase tracking-wide text-ember-cooling">
-          {label} didn&apos;t load
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[11px] text-neutral-500" title={message}>
-          {message}
-        </span>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded border border-ember-cooling/50 px-2 py-0.5 text-[11px] text-ember-cooling transition-colors hover:border-ember-cooling"
-        >
-          Retry
-        </button>
-      </div>
     </div>
   );
 }
@@ -886,22 +983,3 @@ function InquiryWeaveMetric({
   );
 }
 
-function Metric({
-  label,
-  value,
-  caption,
-  title,
-}: {
-  label: string;
-  value: number | string;
-  caption?: ReactNode;
-  title?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-3" title={title}>
-      <div className="font-mono text-2xl font-medium tabular-nums text-neutral-100">{value}</div>
-      <div className="mt-1 text-caption text-neutral-500">{label}</div>
-      {caption ? <div className="mt-0.5 text-[11px]">{caption}</div> : null}
-    </div>
-  );
-}

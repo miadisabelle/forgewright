@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import MedicineWheelSidebar from '@forgewright/components/medicine-wheel/MedicineWheelSidebar';
+import { useChronicleRoute } from '@forgewright/lib/chronicle/useChronicleRoute';
 import Toolbar, { type ViewTab } from './Toolbar';
 import StatusBar from './StatusBar';
 import ContextPanel from './ContextPanel';
@@ -33,7 +34,16 @@ export default function AppShell({ children }: AppShellProps) {
   const isNarrow = useMediaQuery('(max-width: 1023px)');
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [activeView, setActiveView] = useState<ViewTab>('state-machine');
+
+  // `view` lives in the URL so the Chronicle tab — and the rung a reader is
+  // standing on inside it — is restorable and linkable (spec 11.2). The other
+  // tabs gain the same parameter for free.
+  const { route, navigate } = useChronicleRoute();
+  const activeView = route.view;
+  const setActiveView = useCallback(
+    (view: ViewTab) => navigate({ ...route, view }),
+    [navigate, route],
+  );
 
   // Auto-collapse sidebars below 1024px
   useEffect(() => {

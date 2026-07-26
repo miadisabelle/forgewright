@@ -3,10 +3,13 @@
 import { useState, useCallback } from 'react';
 import { useSessionStore, useSpiralStore, useCeremonyStore } from '@forgewright/stores';
 import { DIRECTIONS } from '@forgewright/lib/types';
+import type { ViewTab } from '@forgewright/lib/chronicle/navigation';
 
 // ─── View tabs ────────────────────────────────────────────────────────────────
+// The tab set is declared with the route (lib/chronicle/navigation) so a `view`
+// query value and a rendered tab can never drift apart.
 
-export type ViewTab = 'state-machine' | 'graph' | 'chronicle';
+export type { ViewTab };
 
 interface ToolbarProps {
   activeView: ViewTab;

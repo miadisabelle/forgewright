@@ -569,3 +569,379 @@ export async function getPlanPerspectives(
 
   return { count: perspectives.length, perspectives };
 }
+
+// ─── Narrative Beats (spec 11) ───────────────────────────────────────────────
+// Read-only projection of NarrativeBeat / MedicineWheelCycle served by Medicine
+// Wheel at GET {MW_API_URL}/api/narrative/beats and /api/narrative/cycles.
+// Medicine Wheel is the system of record; ForgeWright reads, groups, and draws.
+// It ships NO write path here — no POST, PATCH, or DELETE against /api/narrative.
+//
+// The wheel serves no filters yet (spec 11 Exportation §3), so the fetch is
+// always unfiltered and the query is applied client-side. That keeps ONE probe
+// feeding the metric tile, every episode section, and every arc.
+
+export type ChronicleDirection = Direction;
+
+/** Prose is bounded to the same 64 KiB the perspective body already honours. */
+export const BEAT_PROSE_LIMIT = 64 * 1024;
+
+/** Sunwise ordinal of a direction — the authority `act` is checked against. */
+export const ACT_FOR_DIRECTION: Record<ChronicleDirection, number> = {
+  east: 1,
+  south: 2,
+  west: 3,
+  north: 4,
+};
+
+export type BeatDiscrepancyKind =
+  | 'act-direction-mismatch'
+  | 'missing-child'
+  | 'missing-parent';
+
+export interface BeatDiscrepancy {
+  beatId: string;
+  kind: BeatDiscrepancyKind;
+  /** The unresolved id, for missing-child / missing-parent. */
+  ref?: string;
+}
+
+export interface BeatOrigin {
+  producer: string;
+  sourceRef?: string;
+  method?: string;
+}
+
+export interface NarrativeBeatRecord {
+  id: string;
+  direction: ChronicleDirection;
+  /** Derived from `direction`; a contradicting served act raises a discrepancy. */
+  act: number;
+  title: string;
+  description?: string;
+  prose?: string;
+  ceremonies: string[];
+  learnings: string[];
+  relationsHonored: string[];
+  timestamp: string;
+  /** Absent → unbound. NEVER inferred: membership is record, not view. */
+  cycleId?: string;
+  parentBeatId?: string;
+  subBeatIds: string[];
+  origin?: BeatOrigin;
+}
+
+export interface NarrativeCycleRecord {
+  id: string;
+  researchQuestion?: string;
+  currentDirection?: ChronicleDirection;
+  startDate?: string;
+  /** A legacy cycle with no `beats` array is served as [], never an error. */
+  beatIds: string[];
+}
+
+export interface ChronicleBeats {
+  count: number;
+  /** Records that failed the contract — surfaced, like ignoredNodeCount. */
+  droppedCount: number;
+  beats: NarrativeBeatRecord[];
+  cycles: NarrativeCycleRecord[];
+  discrepancies: BeatDiscrepancy[];
+  /**
+   * Set when the cycle surface did not answer — an older wheel may not serve it.
+   * Beats still render from their own `cycle_id`; the view says the membership
+   * list is missing rather than pretending there are no cycles.
+   */
+  cyclesUnavailable?: string;
+}
+
+export interface ChronicleArc {
+  /** null when the lane is the unbound collection. */
+  cycleId: string | null;
+  researchQuestion?: string;
+  currentDirection?: ChronicleDirection;
+  byDirection: Record<ChronicleDirection, NarrativeBeatRecord[]>;
+  unbound: NarrativeBeatRecord[];
+  count: number;
+  droppedCount: number;
+  discrepancies: BeatDiscrepancy[];
+}
+
+export interface NarrativeBeatQuery {
+  cycleId?: string;
+  direction?: ChronicleDirection;
+  episodePath?: string;
+}
+
+export function isChronicleDirection(value: unknown): value is ChronicleDirection {
+  return isDirection(value);
+}
+
+/** Guard for an `episode_path` query value — same safety rule as a relative_path. */
+export function isEpisodePathParam(value: unknown): value is string {
+  return isSafeRelativePath(value);
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const list: string[] = [];
+  for (const entry of value) {
+    const text = optionalString(entry)
+      ?? (isRecord(entry) ? optionalString(entry.id) ?? optionalString(entry.name) : undefined);
+    if (text) list.push(text);
+  }
+  return list;
+}
+
+function normalizeBeatOrigin(value: unknown): BeatOrigin | undefined {
+  if (!isRecord(value)) return undefined;
+  const producer = optionalString(value.producer);
+  if (!producer) return undefined;
+
+  const origin: BeatOrigin = { producer };
+  const sourceRef = optionalString(value.source_ref);
+  const method = optionalString(value.method);
+  if (sourceRef) origin.sourceRef = sourceRef;
+  if (method) origin.method = method;
+  return origin;
+}
+
+interface NormalizedBeat {
+  beat: NarrativeBeatRecord;
+  actMismatch: boolean;
+}
+
+function normalizeNarrativeBeat(value: unknown): NormalizedBeat | null {
+  if (!isRecord(value)) return null;
+
+  const id = optionalString(value.id);
+  const title = optionalString(value.title);
+  const timestamp = optionalString(value.timestamp);
+  // Fail closed: no id, direction, title, or timestamp → the record is dropped
+  // and counted. A half-rendered beat would read as record.
+  if (!id || !title || !timestamp || !isDirection(value.direction)) return null;
+
+  const act = ACT_FOR_DIRECTION[value.direction];
+  const servedAct = typeof value.act === 'number' && Number.isFinite(value.act)
+    ? value.act
+    : null;
+
+  const beat: NarrativeBeatRecord = {
+    id,
+    direction: value.direction,
+    act,
+    title,
+    timestamp,
+    ceremonies: stringList(value.ceremonies),
+    learnings: stringList(value.learnings),
+    relationsHonored: stringList(value.relations_honored),
+    subBeatIds: stringList(value.sub_beats),
+  };
+
+  const description = optionalString(value.description);
+  const prose = optionalString(value.prose);
+  const cycleId = optionalString(value.cycle_id);
+  const parentBeatId = optionalString(value.parent_beat_id);
+  const origin = normalizeBeatOrigin(value.origin);
+
+  if (description) beat.description = description;
+  if (prose) beat.prose = prose.length > BEAT_PROSE_LIMIT ? prose.slice(0, BEAT_PROSE_LIMIT) : prose;
+  if (cycleId) beat.cycleId = cycleId;
+  if (parentBeatId) beat.parentBeatId = parentBeatId;
+  if (origin) beat.origin = origin;
+
+  return { beat, actMismatch: servedAct !== act };
+}
+
+function normalizeNarrativeCycle(value: unknown): NarrativeCycleRecord | null {
+  if (!isRecord(value)) return null;
+
+  const id = optionalString(value.id);
+  if (!id) return null;
+
+  const cycle: NarrativeCycleRecord = { id, beatIds: stringList(value.beats) };
+
+  const researchQuestion = optionalString(value.research_question)
+    ?? optionalString(value.cycle_question);
+  const startDate = optionalString(value.start_date);
+  if (researchQuestion) cycle.researchQuestion = researchQuestion;
+  if (startDate) cycle.startDate = startDate;
+  if (isDirection(value.current_direction)) cycle.currentDirection = value.current_direction;
+
+  return cycle;
+}
+
+/** A bare array and `{ beats: [...] }` are both accepted (spec 11.5, 11.7 §1). */
+function collectRawList(value: unknown, ...keys: string[]): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (!isRecord(value)) return [];
+  for (const key of keys) {
+    if (Array.isArray(value[key])) return value[key] as unknown[];
+  }
+  return [];
+}
+
+// ─── Episode ↔ beat association ──────────────────────────────────────────────
+// The wheel registers a REFERENCE to an episode, and a beat carries its own
+// provenance. Association is therefore derived at read time from what the wheel
+// served, never written back: `origin.source_ref` first (the explicit claim),
+// then the episode number carried by a cycle id (`cycle-ep299-…`). Deriving an
+// episode is not deriving a cycle — an unbound beat stays unbound.
+
+const EPISODE_NUMBER_PATTERNS = [/episode[-_](\d{1,6})/i, /\bep[-_]?(\d{1,6})\b/i];
+
+/** Episode ordinal carried by a path, a source_ref, or a cycle id. */
+export function episodeNumberOf(value: string): string | null {
+  for (const pattern of EPISODE_NUMBER_PATTERNS) {
+    const match = pattern.exec(value);
+    if (match) return String(Number.parseInt(match[1], 10));
+  }
+  return null;
+}
+
+export function beatMatchesEpisode(beat: NarrativeBeatRecord, episodePath: string): boolean {
+  const episodeNumber = episodeNumberOf(episodePath);
+  const sourceRef = beat.origin?.sourceRef;
+
+  if (sourceRef) {
+    // Exact vessel, a file inside the vessel, or the vessel name truncated
+    // before its slug (`2026-07-25-episode-299` for `…-299-isolation`).
+    if (sourceRef === episodePath) return true;
+    if (sourceRef.startsWith(`${episodePath}/`)) return true;
+    if (episodePath.startsWith(`${sourceRef}-`) || episodePath.startsWith(`${sourceRef}/`)) return true;
+
+    // An explicit claim decides on its own: a source_ref naming another episode
+    // must not be overridden by a cycle-id convention.
+    const refNumber = episodeNumberOf(sourceRef);
+    if (refNumber) return episodeNumber !== null && refNumber === episodeNumber;
+  }
+
+  if (episodeNumber && beat.cycleId) {
+    const cycleNumber = episodeNumberOf(beat.cycleId);
+    if (cycleNumber) return cycleNumber === episodeNumber;
+  }
+
+  return false;
+}
+
+/** A cycle belongs to an episode through its own id or any member beat. */
+export function cycleMatchesEpisode(
+  cycle: NarrativeCycleRecord,
+  episodePath: string,
+  beats: readonly NarrativeBeatRecord[],
+): boolean {
+  const episodeNumber = episodeNumberOf(episodePath);
+  if (episodeNumber) {
+    const cycleNumber = episodeNumberOf(cycle.id);
+    if (cycleNumber && cycleNumber === episodeNumber) return true;
+  }
+  return beats.some(
+    (beat) =>
+      (beat.cycleId === cycle.id || cycle.beatIds.includes(beat.id))
+      && beatMatchesEpisode(beat, episodePath),
+  );
+}
+
+/** True when no registered episode claims this beat — surfaced, never hidden. */
+export function beatHasNoEpisode(
+  beat: NarrativeBeatRecord,
+  episodePaths: readonly string[],
+): boolean {
+  return !episodePaths.some((path) => beatMatchesEpisode(beat, path));
+}
+
+function collectBeatDiscrepancies(beats: readonly NormalizedBeat[]): BeatDiscrepancy[] {
+  const served = new Set(beats.map((entry) => entry.beat.id));
+  const discrepancies: BeatDiscrepancy[] = [];
+
+  for (const { beat, actMismatch } of beats) {
+    if (actMismatch) discrepancies.push({ beatId: beat.id, kind: 'act-direction-mismatch' });
+    for (const childId of beat.subBeatIds) {
+      if (!served.has(childId)) {
+        discrepancies.push({ beatId: beat.id, kind: 'missing-child', ref: childId });
+      }
+    }
+    if (beat.parentBeatId && !served.has(beat.parentBeatId)) {
+      discrepancies.push({ beatId: beat.id, kind: 'missing-parent', ref: beat.parentBeatId });
+    }
+  }
+
+  return discrepancies;
+}
+
+/**
+ * Read the beat surface. The beats endpoint is load-bearing — when it fails the
+ * error travels (the proxy answers 503) so an unreachable wheel is never shaped
+ * like an empty chronicle. The cycles endpoint is enriching: an older wheel that
+ * does not serve it degrades to `cyclesUnavailable` with the beats still drawn.
+ */
+export async function getNarrativeBeats(
+  query: NarrativeBeatQuery = {},
+  options: ChronicleClientOptions = {},
+): Promise<ChronicleBeats> {
+  const baseUrl = resolveBaseUrl(options.baseUrl);
+  const requestOptions = {
+    baseUrl,
+    fetchImpl: options.fetchImpl ?? fetch,
+    timeoutMs: options.timeoutMs ?? 5_000,
+  };
+
+  const [beatsResult, cyclesResult] = await Promise.allSettled([
+    fetchJson('/api/narrative/beats', requestOptions),
+    fetchJson('/api/narrative/cycles', requestOptions),
+  ]);
+
+  if (beatsResult.status === 'rejected') {
+    throw beatsResult.reason instanceof Error
+      ? beatsResult.reason
+      : new Error('Medicine Wheel /api/narrative/beats is unavailable');
+  }
+
+  const normalized = collectRawList(beatsResult.value, 'beats', 'narrative_beats')
+    .map((record) => normalizeNarrativeBeat(record))
+    .filter((entry): entry is NormalizedBeat => entry !== null);
+  const droppedCount = collectRawList(beatsResult.value, 'beats', 'narrative_beats').length
+    - normalized.length;
+
+  let cycles: NarrativeCycleRecord[] = [];
+  let cyclesUnavailable: string | undefined;
+  if (cyclesResult.status === 'fulfilled') {
+    cycles = collectRawList(cyclesResult.value, 'cycles', 'narrative_cycles')
+      .map((record) => normalizeNarrativeCycle(record))
+      .filter((cycle): cycle is NarrativeCycleRecord => cycle !== null);
+  } else {
+    cyclesUnavailable = cyclesResult.reason instanceof Error
+      ? cyclesResult.reason.message
+      : 'Medicine Wheel /api/narrative/cycles is unavailable';
+  }
+
+  const discrepancies = collectBeatDiscrepancies(normalized);
+  let beats = normalized.map((entry) => entry.beat);
+
+  // The wheel serves no filters yet, so the query is honoured here.
+  if (query.cycleId) {
+    const cycle = cycles.find((entry) => entry.id === query.cycleId);
+    beats = beats.filter(
+      (beat) => beat.cycleId === query.cycleId || (cycle?.beatIds.includes(beat.id) ?? false),
+    );
+  }
+  if (query.direction) {
+    beats = beats.filter((beat) => beat.direction === query.direction);
+  }
+  if (query.episodePath) {
+    const episodePath = query.episodePath;
+    beats = beats.filter((beat) => beatMatchesEpisode(beat, episodePath));
+    cycles = cycles.filter((cycle) => cycleMatchesEpisode(cycle, episodePath, beats));
+  }
+
+  const keptIds = new Set(beats.map((beat) => beat.id));
+
+  const result: ChronicleBeats = {
+    count: beats.length,
+    droppedCount,
+    beats,
+    cycles,
+    discrepancies: discrepancies.filter((entry) => keptIds.has(entry.beatId)),
+  };
+  if (cyclesUnavailable) result.cyclesUnavailable = cyclesUnavailable;
+  return result;
+}

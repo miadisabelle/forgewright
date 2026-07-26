@@ -7,8 +7,12 @@
 // These helpers are pure so the cache arithmetic is testable without React.
 
 import {
+  beatHasNoEpisode,
+  beatMatchesEpisode,
+  cycleMatchesEpisode,
   getEpisodeInquiryPath,
   type ChronicleArtifactReference,
+  type ChronicleBeats,
   type EpisodeInquiry,
   type PlanPerspectives,
 } from './client';
@@ -100,6 +104,88 @@ export function projectInquirySection(
   }
   const filtered = filterInquiryForEpisode(resource.data, episodePath);
   return { status: filtered.count === 0 ? 'empty' : 'ready', data: filtered, error: null };
+}
+
+// ─── Narrative beats share the same one-fetch discipline (spec 11, A3) ───────
+// The wheel serves no beat filters yet, so ONE unfiltered probe feeds the
+// metric tile, every episode's beat section, the unbound lane, and every arc.
+// Projection is pure filtering over that single answer.
+
+function projectBeats(
+  all: ChronicleBeats,
+  keep: (beat: ChronicleBeats['beats'][number]) => boolean,
+  keepCycle: (cycle: ChronicleBeats['cycles'][number], beats: ChronicleBeats['beats']) => boolean,
+): ChronicleBeats {
+  const beats = all.beats.filter(keep);
+  const kept = new Set(beats.map((beat) => beat.id));
+  const projected: ChronicleBeats = {
+    count: beats.length,
+    // droppedCount belongs to the whole answer, not to one episode's slice.
+    droppedCount: all.droppedCount,
+    beats,
+    cycles: all.cycles.filter((cycle) => keepCycle(cycle, beats)),
+    discrepancies: all.discrepancies.filter((entry) => kept.has(entry.beatId)),
+  };
+  if (all.cyclesUnavailable) projected.cyclesUnavailable = all.cyclesUnavailable;
+  return projected;
+}
+
+/** Project the one unfiltered beat fetch down to a single episode. */
+export function filterBeatsForEpisode(all: ChronicleBeats, episodePath: string): ChronicleBeats {
+  return projectBeats(
+    all,
+    (beat) => beatMatchesEpisode(beat, episodePath),
+    (cycle, beats) => cycleMatchesEpisode(cycle, episodePath, beats),
+  );
+}
+
+/**
+ * Beats no registered episode claims, and the cycles no registered episode
+ * claims either. They are shown in their own lane rather than filtered into
+ * invisibility — the wheel may hold a beat whose episode was never registered
+ * as a reference, and a legacy cycle with zero members is still a cycle
+ * (kin: jgwill/medicine-wheel#83). Neither absence is a reason to disappear.
+ */
+export function filterBeatsOutsideEpisodes(
+  all: ChronicleBeats,
+  episodePaths: readonly string[],
+): ChronicleBeats {
+  return projectBeats(
+    all,
+    (beat) => beatHasNoEpisode(beat, episodePaths),
+    (cycle) => !episodePaths.some((path) => cycleMatchesEpisode(cycle, path, all.beats)),
+  );
+}
+
+/** Nothing to show at all — no beats AND no cycle to open. */
+function isSilent(projected: ChronicleBeats): boolean {
+  return projected.count === 0 && projected.cycles.length === 0;
+}
+
+/** Per-episode beat lifecycle derived from the ONE shared unfiltered fetch. */
+export function projectBeatSection(
+  resource: SharedResource<ChronicleBeats>,
+  episodePath: string,
+): SectionProjection<ChronicleBeats> {
+  if (resource.status === 'loading') return { status: 'loading', data: null, error: null };
+  if (resource.status === 'error' || !resource.data) {
+    return { status: 'error', data: null, error: resource.error ?? 'upstream unavailable' };
+  }
+  const filtered = filterBeatsForEpisode(resource.data, episodePath);
+  return { status: isSilent(filtered) ? 'empty' : 'ready', data: filtered, error: null };
+}
+
+/** The unclaimed lane's lifecycle, on the same rule as an episode's. */
+export function projectUnclaimedBeatSection(
+  resource: SharedResource<ChronicleBeats>,
+  episodePaths: readonly string[],
+): SectionProjection<ChronicleBeats> {
+  if (resource.status === 'loading') return { status: 'loading', data: null, error: null };
+  if (resource.status === 'error' || !resource.data) {
+    return { status: 'error', data: null, error: resource.error ?? 'upstream unavailable' };
+  }
+  const outside = filterBeatsOutsideEpisodes(resource.data, episodePaths);
+  return { status: isSilent(outside) ? 'empty' : 'ready', data: outside, error: null };
 }
 
 /** Per-section perspectives lifecycle from the shared per-path cache. */
