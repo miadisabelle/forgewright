@@ -1,7 +1,7 @@
 /**
  * Forgewright Runtime Bridge (WS8) — presentational live-state bridge.
  *
- * Wraps the shared `@smcraft/bridge-react` `createBridgeSession` core (the
+ * Wraps the shared `@miadi/stateloom-react` `createBridgeSession` core (the
  * framework-agnostic, React-free session) with `role: 'runtime'`, so a running
  * `Machine` can light up its current state on any design-time canvas — web
  * designers, or other forgewright tabs — in real time.
@@ -22,8 +22,8 @@ import type { StateMachineDefinition } from '../types/smdf';
 // The shared protocol owns its own copy of the SMDF types; forgewright's SMDF
 // (settings/actions differ in presentational fields) is structurally the same
 // on the wire, so it is cast at the emit boundary.
-import type { StateMachineDefinition as ProtocolDefinition } from '@smcraft/bridge-protocol';
-import type { BridgeSession } from '@smcraft/bridge-react';
+import type { StateMachineDefinition as ProtocolDefinition } from '@miadi/stateloom-protocol';
+import type { BridgeSession } from '@miadi/stateloom-react';
 
 // ─── Enablement ──────────────────────────────────────────────────────────────
 
@@ -100,8 +100,8 @@ export async function createRuntimeBridge(
     // `useSmcraftBridge`) anywhere in a Server Component / route chain. At
     // runtime this resolves in Node, where the hook module loads harmlessly and
     // we only ever touch the React-free `createBridgeSession`.
-    const specifier = '@smcraft/bridge-react';
-    const mod = (await import(/* webpackIgnore: true */ specifier)) as typeof import('@smcraft/bridge-react');
+    const specifier = '@miadi/stateloom-react';
+    const mod = (await import(/* webpackIgnore: true */ specifier)) as typeof import('@miadi/stateloom-react');
     session = mod.createBridgeSession({
       url,
       role: 'runtime',

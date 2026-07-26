@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@smcraft/bridge-client": "file:../../jgwill/smcraft/bridge-client",
-    "@smcraft/bridge-protocol": "file:../../jgwill/smcraft/bridge-protocol",
-    "@smcraft/bridge-react": "file:../../jgwill/smcraft/bridge-react",
+    "@miadi/stateloom-client": "^0.1.0",
+    "@miadi/stateloom-protocol": "^0.1.0",
+    "@miadi/stateloom-react": "^0.1.0",
     "immer": "^11.1.4",
     "ioredis": "^5.4.0",
     "kuzu": "^0.11.2",
