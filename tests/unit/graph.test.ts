@@ -281,7 +281,7 @@ describe('ForgewrightGraph', () => {
     });
     await graph.createNode({
       id: 'spec-1', nodeType: 'Spec', name: 'S', version: '1.0',
-      ocap: publicOcap, createdAt: now,
+      status: 'draft', ocap: publicOcap, createdAt: now,
     });
     const intents = await graph.findNodes('Intent');
     expect(intents).toHaveLength(1);

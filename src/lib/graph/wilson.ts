@@ -76,11 +76,14 @@ async function computeRelationalDensity(
     totalEdges += edges.length;
   }
 
-  // Soft density: saturates towards 1.0 with a log curve
+  // Diminishing-returns curve: moderate density scores well, but the component
+  // saturates asymptotically instead of slamming to 1.0. The previous
+  // `min(1, raw * 10)` amplifier declared ANY 4-node graph with 2 edges
+  // maximally relational, which let a graph with zero accountability still
+  // read as "aligned" overall — false comfort, not alignment.
   const maxPossible = totalNodes * (totalNodes - 1);
   const rawDensity = totalEdges / maxPossible;
-  // Apply softmax so even moderate density scores well
-  return Math.min(1.0, rawDensity * 10);
+  return 1 - Math.exp(-5 * rawDensity);
 }
 
 /**

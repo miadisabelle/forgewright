@@ -86,14 +86,14 @@ describe('getChronicleSnapshot', () => {
     const fetchImpl = createFetch([rootNode, episodeNode, planNode, machineNode]);
 
     const snapshot = await getChronicleSnapshot({
-      baseUrl: 'http://127.0.0.1:3940/',
+      baseUrl: 'http://127.0.0.1:8040/',
       fetchImpl,
     });
 
     expect(snapshot.readonly).toBe(true);
     expect(snapshot.source).toEqual({
       service: 'medicine-wheel',
-      baseUrl: 'http://127.0.0.1:3940',
+      baseUrl: 'http://127.0.0.1:8040',
       status: 'healthy',
       provider: 'jsonl',
     });
@@ -192,14 +192,14 @@ describe('getChronicleSnapshot', () => {
 
 describe('describeChronicleSource', () => {
   it('resolves the upstream identity without throwing', () => {
-    expect(describeChronicleSource('http://192.168.2.30:3940/')).toEqual({
+    expect(describeChronicleSource('http://127.0.0.1:8040/')).toEqual({
       service: 'medicine-wheel',
-      baseUrl: 'http://192.168.2.30:3940',
+      baseUrl: 'http://127.0.0.1:8040',
     });
   });
 
   it('reports misconfiguration instead of throwing', () => {
-    const source = describeChronicleSource('http://192.168.2.30:3940/some/path');
+    const source = describeChronicleSource('http://127.0.0.1:8040/some/path');
 
     expect(source.baseUrl).toBeNull();
     expect(source.configError).toContain('MW_API_URL');

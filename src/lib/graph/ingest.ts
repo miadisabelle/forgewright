@@ -260,25 +260,28 @@ export async function ingestStateMachine(
     }
   }
 
-  // TRANSITIONS_TO edges from state transitions
+  // TRANSITIONS_TO edges from state transitions. A state without its own
+  // transitions (a bare composite root, for one) must still descend into its
+  // children — an early return here silently drops every nested transition.
   async function ingestTransitions(stateDef: any): Promise<void> {
     const fromStateId = stateIdMap.get(stateDef.name);
-    if (!fromStateId || !stateDef.transitions) return;
 
-    for (const t of stateDef.transitions) {
-      const toStateName = t.nextState ?? stateDef.name; // self-transition if no nextState
-      const toStateId = stateIdMap.get(toStateName);
-      if (!toStateId) continue;
+    if (fromStateId && stateDef.transitions) {
+      for (const t of stateDef.transitions) {
+        const toStateName = t.nextState ?? stateDef.name; // self-transition if no nextState
+        const toStateId = stateIdMap.get(toStateName);
+        if (!toStateId) continue;
 
-      await graph.createEdge(GraphEdgeSchema.parse({
-        id: uid('edge'),
-        fromId: fromStateId,
-        toId: toStateId,
-        edgeType: 'TRANSITIONS_TO',
-        metadata: { event_name: t.event, guard: t.condition },
-        ocap,
-        createdAt: now,
-      }));
+        await graph.createEdge(GraphEdgeSchema.parse({
+          id: uid('edge'),
+          fromId: fromStateId,
+          toId: toStateId,
+          edgeType: 'TRANSITIONS_TO',
+          metadata: { event_name: t.event, guard: t.condition },
+          ocap,
+          createdAt: now,
+        }));
+      }
     }
 
     if (stateDef.states) {

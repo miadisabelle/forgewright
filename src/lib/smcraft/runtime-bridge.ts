@@ -11,7 +11,11 @@ import type {
   StateDef,
   StateMachineEvent,
 } from '../types/smdf';
-import { EVENT_IDS } from './events';
+import {
+  createRuntimeBridge,
+  isBridgeEnabled,
+  type RuntimeBridge,
+} from './forgewright-bridge';
 
 // ─── Runtime interface (what we expose regardless of backend) ────────────────
 
@@ -34,16 +38,61 @@ export interface TransitionResult {
 }
 
 // ─── smcraft import attempt ──────────────────────────────────────────────────
+// smcraft@0.3.0 ships a definition-driven interpreter (`Machine`, root
+// export). Contract (locked in .fw/mission-smc/handoffs.md): construction
+// auto-enters the initial leaf via first-child descent; send() resolves leaf
+// upward, deepest declaring state wins; internal / target-is-current-state
+// resolves handled-without-change; composite targets descend to their
+// initial leaf; entering a final leaf sets done.
+
+interface SmcraftSendResult {
+  handled: boolean;
+  changed: boolean;
+  from: string;
+  to: string;
+  event: string;
+  error?: string;
+}
+
+interface SmcraftMachineHandle {
+  state: string;
+  done: boolean;
+  send: (eventId: string, payload?: Record<string, unknown>) => SmcraftSendResult;
+  stop: () => void;
+}
+
+/** Guard predicate per the 0.3.0 contract — guards fail closed. */
+export type GuardFn = (
+  condition: string,
+  payload: Record<string, unknown> | undefined,
+  context: Record<string, unknown>,
+) => boolean;
+
+export interface CreateMachineOptions {
+  /** Guard context; the default guard resolves Boolean(context[condition]). */
+  context?: Record<string, unknown>;
+  /** Custom guard evaluation; overrides the default context lookup. */
+  guard?: GuardFn;
+  /**
+   * Stable doc id shared with runtime-diagram viewers (WS8). Defaults to the
+   * definition's `namespace(.name)`. Only used when the live bridge is enabled
+   * via NEXT_PUBLIC_SMCRAFT_BRIDGE_URL.
+   */
+  bridgeDocId?: string;
+}
 
 type SmcraftRuntime = {
-  Context: new (name?: string) => {
-    stateCurrent: { name: string } | null;
-    enterInitialState: () => void;
-    leaveCurrentState: () => void;
-    setState: (name: string) => void;
-    serialize: () => Record<string, unknown>;
-  };
+  Machine: new (
+    definition: StateMachineDefinition,
+    options?: {
+      name?: string;
+      context?: Record<string, unknown>;
+      guard?: GuardFn;
+    },
+  ) => SmcraftMachineHandle;
 };
+
+const defaultGuard: GuardFn = (condition, _payload, context) => Boolean(context[condition]);
 
 let _smcraftRuntime: SmcraftRuntime | null = null;
 let _smcraftAttempted = false;
@@ -52,12 +101,49 @@ async function getSmcraftRuntime(): Promise<SmcraftRuntime | null> {
   if (_smcraftAttempted) return _smcraftRuntime;
   _smcraftAttempted = true;
   try {
-    const mod = 'smcraft/runtime';
-    _smcraftRuntime = await import(/* webpackIgnore: true */ mod) as SmcraftRuntime;
+    const mod = 'smcraft';
+    const imported = await import(/* webpackIgnore: true */ mod) as Partial<SmcraftRuntime>;
+    _smcraftRuntime = typeof imported.Machine === 'function' ? (imported as SmcraftRuntime) : null;
   } catch {
     _smcraftRuntime = null;
   }
   return _smcraftRuntime;
+}
+
+// Live interpreter per instance, keyed by machine id. Kept outside
+// MachineInstance so the exported shape stays serializable.
+const _engines = new Map<string, SmcraftMachineHandle>();
+
+// Standalone fallback keeps the same fail-closed guard semantics; per-machine
+// guard + context live here, keyed by machine id.
+const _guards = new Map<string, { guard: GuardFn; context: Record<string, unknown> }>();
+
+// WS8: live runtime-diagram bridge per machine, keyed by machine id. Present
+// only when NEXT_PUBLIC_SMCRAFT_BRIDGE_URL is set; otherwise the map stays
+// empty and every emit below is a no-op.
+const _bridges = new Map<string, RuntimeBridge>();
+
+/**
+ * Mirror a successful leaf transition onto the live bridge so viewers highlight
+ * the new active state. Presentational and best-effort — a bridge failure never
+ * touches the interpreter's verdict.
+ */
+function emitBridgeTransition(
+  machineId: string,
+  previousState: string,
+  currentState: string,
+  eventId: string,
+  changed: boolean,
+): void {
+  if (!changed) return;
+  const bridge = _bridges.get(machineId);
+  if (!bridge) return;
+  try {
+    bridge.exit(previousState);
+    bridge.enter(currentState, previousState, eventId);
+  } catch {
+    // never break the interpreter over a presentational emit
+  }
 }
 
 // ─── Standalone Runtime ──────────────────────────────────────────────────────
@@ -68,21 +154,6 @@ function findInitialLeaf(state: StateDef): string {
     return findInitialLeaf(state.states[0]);
   }
   return state.name;
-}
-
-function findAllLeafStates(state: StateDef): Map<string, StateDef> {
-  const map = new Map<string, StateDef>();
-
-  function walk(s: StateDef): void {
-    if (s.states && s.states.length > 0) {
-      for (const child of s.states) walk(child);
-    } else {
-      map.set(s.name, s);
-    }
-  }
-
-  walk(state);
-  return map;
 }
 
 function findStateByName(root: StateDef, name: string): StateDef | null {
@@ -98,10 +169,11 @@ function resolveTransition(
   state: StateDef,
   eventId: string,
   root: StateDef,
+  allows: (condition: string | undefined) => boolean,
 ): string | null {
   // Check current state's transitions
   for (const t of state.transitions ?? []) {
-    if (t.event === eventId && t.nextState) {
+    if (t.event === eventId && t.nextState && allows(t.condition)) {
       return t.nextState;
     }
   }
@@ -119,7 +191,7 @@ function resolveTransition(
   let parent = findParent(state, root);
   while (parent) {
     for (const t of parent.transitions ?? []) {
-      if (t.event === eventId && t.nextState) {
+      if (t.event === eventId && t.nextState && allows(t.condition)) {
         return t.nextState;
       }
     }
@@ -143,22 +215,60 @@ let _idCounter = 0;
  */
 export async function createMachine(
   definition: StateMachineDefinition,
+  options: CreateMachineOptions = {},
 ): Promise<MachineInstance> {
   const id = `machine_${Date.now()}_${++_idCounter}`;
-  const initialState = findInitialLeaf(definition.state);
   const runtime = await getSmcraftRuntime();
 
+  let engine: SmcraftMachineHandle | null = null;
+  if (runtime) {
+    try {
+      engine = new runtime.Machine(definition, {
+        name: definition.settings.name,
+        context: options.context,
+        guard: options.guard,
+      });
+    } catch {
+      // MachineDefinitionError (V001/V002/V006) — the lenient standalone
+      // runtime still accepts the definition, so fall back rather than fail.
+      engine = null;
+    }
+  }
+
+  const initialState = engine ? engine.state : findInitialLeaf(definition.state);
   const instance: MachineInstance = {
     id,
     definition,
     currentState: initialState,
     stateHistory: [initialState],
     eventLog: [],
-    isRunning: true,
-    backend: runtime ? 'smcraft' : 'standalone',
+    isRunning: engine ? !engine.done : true,
+    backend: engine ? 'smcraft' : 'standalone',
   };
 
+  if (engine) _engines.set(id, engine);
+  _guards.set(id, { guard: options.guard ?? defaultGuard, context: options.context ?? {} });
   _machines.set(id, instance);
+
+  // WS8: open the live runtime-diagram bridge (no-op unless the bridge URL is
+  // set). Seeds the graph + initial leaf for viewers; best-effort throughout.
+  if (isBridgeEnabled()) {
+    const docId =
+      options.bridgeDocId ??
+      `${definition.settings.namespace}${definition.settings.name ? `.${definition.settings.name}` : ''}`;
+    try {
+      const bridge = await createRuntimeBridge({
+        docId,
+        name: definition.settings.name,
+        definition,
+        initialState,
+      });
+      if (bridge.enabled) _bridges.set(id, bridge);
+    } catch {
+      // never block machine creation on the presentational bridge
+    }
+  }
+
   return instance;
 }
 
@@ -188,6 +298,45 @@ export function fireEvent(
     };
   }
 
+  // smcraft backend: the installed interpreter drives the transition and the
+  // bridge mirrors its verdict. success means the leaf actually moved
+  // (SendResult.changed); a handled-but-internal event reports why.
+  const engine = _engines.get(machine.id);
+  if (engine) {
+    const result = engine.send(eventId, data);
+    const event: StateMachineEvent = {
+      id: `evt_${Date.now()}_${++_idCounter}`,
+      timestamp: new Date().toISOString(),
+      eventId,
+      fromState: result.from,
+      toState: result.to,
+      payload: data,
+    };
+    machine.eventLog.push(event);
+
+    if (result.changed) {
+      machine.currentState = result.to;
+      machine.stateHistory.push(result.to);
+    }
+    if (engine.done) machine.isRunning = false;
+
+    // WS8: light the newly-entered leaf on the live design canvas.
+    emitBridgeTransition(machine.id, result.from, machine.currentState, eventId, result.changed);
+
+    return {
+      success: result.changed,
+      previousState: result.from,
+      currentState: machine.currentState,
+      event,
+      error: result.changed
+        ? undefined
+        : result.error
+          ?? (result.handled
+            ? `Event "${eventId}" was internal — no state change`
+            : `No transition for event "${eventId}" from state "${result.from}"`),
+    };
+  }
+
   const previousState = machine.currentState;
   const currentStateDef = findStateByName(machine.definition.state, previousState);
 
@@ -209,38 +358,55 @@ export function fireEvent(
     };
   }
 
-  // Resolve transition
-  const nextStateName = resolveTransition(currentStateDef, eventId, machine.definition.state);
+  // Resolve transition. Contract alignment with the smcraft interpreter:
+  // a composite target descends to its initial leaf, and a transition that
+  // lands on the current state is internal — handled, but success (= the
+  // leaf actually moved) is false.
+  const guardEntry = _guards.get(machine.id) ?? { guard: defaultGuard, context: {} };
+  const allows = (condition: string | undefined): boolean =>
+    condition === undefined || guardEntry.guard(condition, data, guardEntry.context);
+  const nextStateName = resolveTransition(currentStateDef, eventId, machine.definition.state, allows);
+  const targetDef = nextStateName
+    ? findStateByName(machine.definition.state, nextStateName)
+    : null;
+  const landedState = targetDef ? findInitialLeaf(targetDef) : nextStateName ?? previousState;
+  const changed = nextStateName !== null && landedState !== previousState;
 
-  const toState = nextStateName ?? previousState;
   const event: StateMachineEvent = {
     id: `evt_${Date.now()}_${++_idCounter}`,
     timestamp: new Date().toISOString(),
     eventId,
     fromState: previousState,
-    toState,
+    toState: landedState,
     payload: data,
   };
 
   machine.eventLog.push(event);
 
-  if (nextStateName) {
-    machine.currentState = nextStateName;
-    machine.stateHistory.push(nextStateName);
+  if (changed) {
+    machine.currentState = landedState;
+    machine.stateHistory.push(landedState);
 
     // Check if we reached a final state
-    const nextDef = findStateByName(machine.definition.state, nextStateName);
-    if (nextDef?.kind === 'final') {
+    const landedDef = findStateByName(machine.definition.state, landedState);
+    if (landedDef?.kind === 'final') {
       machine.isRunning = false;
     }
   }
 
+  // WS8: light the newly-entered leaf on the live design canvas.
+  emitBridgeTransition(machine.id, previousState, machine.currentState, eventId, changed);
+
   return {
-    success: !!nextStateName,
+    success: changed,
     previousState,
     currentState: machine.currentState,
     event,
-    error: nextStateName ? undefined : `No transition for event "${eventId}" from state "${previousState}"`,
+    error: changed
+      ? undefined
+      : nextStateName
+        ? `Event "${eventId}" was internal — no state change`
+        : `No transition for event "${eventId}" from state "${previousState}"`,
   };
 }
 
@@ -279,6 +445,18 @@ export function getMachine(id: string): MachineInstance | undefined {
  * Destroy a machine instance.
  */
 export function destroyMachine(id: string): boolean {
+  const engine = _engines.get(id);
+  if (engine) {
+    engine.stop(); // release timers per the 0.3.0 contract
+    _engines.delete(id);
+  }
+  _guards.delete(id);
+  // WS8: tear down the live bridge for this machine, if any.
+  const bridge = _bridges.get(id);
+  if (bridge) {
+    bridge.disconnect();
+    _bridges.delete(id);
+  }
   const machine = _machines.get(id);
   if (machine) {
     machine.isRunning = false;

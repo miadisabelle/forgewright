@@ -317,12 +317,13 @@ describe('plan', () => {
     const { assessed } = assess(enriched);
     const result = plan(assessed);
 
-    expect(result.smdfSeed).toBeDefined();
-    expect(result.smdfSeed.settings).toBeDefined();
-    expect(result.smdfSeed.settings.namespace).toContain('pde.');
-    expect(result.smdfSeed.state).toBeDefined();
-    expect(result.smdfSeed.state.states!.length).toBeGreaterThanOrEqual(2); // idle + completed + actions
-    expect(result.smdfSeed.events.length).toBeGreaterThanOrEqual(1);
+    expect(result.smdfSeed).not.toBeNull();
+    const seed = result.smdfSeed!;
+    expect(seed.settings).toBeDefined();
+    expect(seed.settings.namespace).toContain('pde.');
+    expect(seed.state).toBeDefined();
+    expect(seed.state.states!.length).toBeGreaterThanOrEqual(2); // idle + completed + actions
+    expect(seed.events.length).toBeGreaterThanOrEqual(1);
   });
 
   it('generates graph nodes from plan', () => {
@@ -550,8 +551,8 @@ describe('storage (mocked filesystem)', () => {
     expect(result.decomposition.actionStack).toBeDefined();
 
     // Verify SMDF seed is valid for .seed.smdf.json storage
-    expect(result.smdfSeed).toBeDefined();
-    expect(result.smdfSeed.settings.namespace).toBeDefined();
+    expect(result.smdfSeed).not.toBeNull();
+    expect(result.smdfSeed!.settings.namespace).toBeDefined();
 
     // Verify markdown can be rendered
     const md = renderMarkdown(result.decomposition);

@@ -31,6 +31,16 @@ const PHASE_NAMES: Record<CreativePhase, string> = {
 
 const PHASE_ORDER: CreativePhase[] = ['germination', 'assimilation', 'completion'];
 
+/**
+ * Initial atomic state: structural tension held, germination not yet begun.
+ * The machine rests here after auto-entering the initial leaf (smcraft@0.2.0
+ * contract: first-child descent at construction), so `tension_established`
+ * is a REAL transition out — not a self-transition onto the state the
+ * machine already occupies. Fritz semantics: germination begins WHEN
+ * tension is established.
+ */
+export const TENSION_FIELD_STATE = 'TensionField';
+
 const PHASE_DESCRIPTIONS: Record<CreativePhase, string> = {
   germination: 'Vision and inquiry — the seed of the creative process',
   assimilation: 'Planning and action — holding tension in the doing',
@@ -245,17 +255,26 @@ export function stcToSMDF(chart: StructuralTensionChart): StateMachineDefinition
     ],
   };
 
-  // Root state
+  // Root state. TensionField is the first child, so construction lands there
+  // and tension_established leaves it; the event lives ONLY on TensionField —
+  // on the root it would also fire from any later state via the ancestor walk
+  // and yank the machine back to Germination (oscillation, not advancement).
   const rootState: StateDef = {
     name: 'CreativeProcess',
     description: `STC: ${chart.desiredOutcome}`,
-    states: phaseStates,
-    transitions: [
+    states: [
       {
-        event: EVENT_IDS.TENSION_ESTABLISHED,
-        nextState: stepToStateName(grouped.germination[0]),
-        description: 'Tension established — enter Germination',
+        name: TENSION_FIELD_STATE,
+        description: 'Structural tension held — germination not yet begun',
+        transitions: [
+          {
+            event: EVENT_IDS.TENSION_ESTABLISHED,
+            nextState: stepToStateName(grouped.germination[0]),
+            description: 'Tension established — enter Germination',
+          },
+        ],
       },
+      ...phaseStates,
     ],
   };
 
@@ -290,6 +309,10 @@ export function smdfToSTC(definition: StateMachineDefinition): StructuralTension
 
   function walkStates(states: StateDef[], parentPhase: CreativePhase | null): void {
     for (const state of states) {
+      // TensionField is machine scaffolding, not an action step — excluding it
+      // keeps STC → SMDF → STC round-trips lossless.
+      if (state.name === TENSION_FIELD_STATE) continue;
+
       // Determine phase from state name
       const phase = stateToPhase(state.name) as CreativePhase | null ?? parentPhase;
 

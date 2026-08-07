@@ -7,17 +7,8 @@
 
 import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  DIRECTIONS,
-  DIRECTION_NAMES,
-  type DirectionName,
-} from '../types/directions';
-import type {
-  OntologicalDecomposition,
-  StructuredPlan,
-  PdeActionItem,
-} from '../types/pde';
-import type { StateMachineDefinition } from '../types/smdf';
+import { DIRECTIONS, DIRECTION_NAMES } from '../types/directions';
+import type { OntologicalDecomposition, StructuredPlan } from '../types/pde';
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 
@@ -113,7 +104,9 @@ export function renderMarkdown(decomp: OntologicalDecomposition): string {
       : dir === 'west' ? 'Validation'
       : 'Action';
 
-    lines.push(`### ${info.emoji} ${info.name.toUpperCase()} — ${label}`);
+    // Ojibwe name in the heading is canonical (Four-Directions-with-Ojibwe-names
+    // principle) — it must render whether or not obligations follow.
+    lines.push(`### ${info.emoji} ${info.name.toUpperCase()} (${info.ojibwe}) — ${label}`);
     lines.push('');
 
     if (dirData.insights.length === 0) {
