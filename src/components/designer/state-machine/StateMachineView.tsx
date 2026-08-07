@@ -17,6 +17,8 @@ import type {
 } from '../canvas/types';
 import { useDesignerStore } from '@forgewright/stores';
 import { useMachineStore } from '@forgewright/stores';
+import type { EpisodeDiagramRef } from '@forgewright/lib/chronicle/diagrams';
+import type { WorkspaceStateMachine } from '@forgewright/lib/types';
 import { smdfToCanvas, classifyState } from './smdf-to-canvas';
 import StatePanel from './StatePanel';
 import TransitionPanel from './TransitionPanel';
@@ -63,7 +65,33 @@ export default function StateMachineView() {
   const {
     currentMachine,
     currentState,
+    loadMachine,
+    unloadMachine,
   } = useMachineStore();
+
+  // ── Episode diagram picker (GET /api/machines) ──────────────────────────
+  const [diagrams, setDiagrams] = useState<EpisodeDiagramRef[]>([]);
+  const [diagramError, setDiagramError] = useState<string | null>(null);
+  const [loadingDiagram, setLoadingDiagram] = useState(false);
+
+  useEffect(() => {
+    if (currentMachine) return;
+    let cancelled = false;
+    fetch('/api/machines')
+      .then(async (response) => {
+        const body = await response.json();
+        if (cancelled) return;
+        if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+        setDiagrams(body.data?.diagrams ?? []);
+        setDiagramError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setDiagramError(error instanceof Error ? error.message : 'Episode diagrams unavailable');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [currentMachine]);
 
   const [contextTarget, setContextTarget] = useState<{
     kind: 'node' | 'edge' | 'canvas';
@@ -183,6 +211,27 @@ export default function StateMachineView() {
     moveNode(nodeId, x, y);
   }, [moveNode]);
 
+  const handleLoadDiagram = useCallback(async (relativePath: string) => {
+    setLoadingDiagram(true);
+    setDiagramError(null);
+    try {
+      const response = await fetch(`/api/machines?path=${encodeURIComponent(relativePath)}`);
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+      navigateToRoot();
+      loadMachine(body.data as WorkspaceStateMachine);
+    } catch (error: unknown) {
+      setDiagramError(error instanceof Error ? error.message : 'Diagram failed to load');
+    } finally {
+      setLoadingDiagram(false);
+    }
+  }, [loadMachine, navigateToRoot]);
+
+  const handleUnloadMachine = useCallback(() => {
+    navigateToRoot();
+    unloadMachine();
+  }, [navigateToRoot, unloadMachine]);
+
   // ── Breadcrumb navigation ───────────────────────────────────────────────
   const breadcrumb = useMemo(() => {
     const parts: Array<{ label: string; action: () => void }> = [
@@ -213,13 +262,35 @@ export default function StateMachineView() {
     return canvasEdges.find((e) => e.id === selection) ?? null;
   }, [canvasEdges, selection, selectionKind]);
 
-  // ── Empty state ─────────────────────────────────────────────────────────
+  // ── Empty state: episode diagram picker ─────────────────────────────────
   if (!definition) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
-        <div className="text-center">
+        <div className="w-full max-w-md px-6 text-center">
           <p className="text-lg">No state machine loaded</p>
-          <p className="mt-1 text-sm">Load a workspace with an SMDF definition to begin</p>
+          <p className="mt-1 text-sm">Pick an episode diagram to begin</p>
+          {diagramError && (
+            <p className="mt-3 text-sm text-red-400">{diagramError}</p>
+          )}
+          {!diagramError && diagrams.length === 0 && (
+            <p className="mt-3 text-sm text-neutral-600">
+              No diagrams discovered under the chronicle root
+            </p>
+          )}
+          <ul className="mt-4 space-y-1.5 text-left">
+            {diagrams.map((diagram) => (
+              <li key={diagram.relativePath}>
+                <button
+                  onClick={() => handleLoadDiagram(diagram.relativePath)}
+                  disabled={loadingDiagram}
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-left hover:bg-neutral-800 disabled:opacity-40"
+                >
+                  <span className="block text-sm text-neutral-200">{diagram.name}</span>
+                  <span className="block text-xs text-neutral-500">{diagram.episode}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     );
@@ -245,8 +316,26 @@ export default function StateMachineView() {
           </React.Fragment>
         ))}
 
-        {/* Mode toggle */}
+        {/* Loaded machine identity + eject back to the picker */}
         <div className="ml-auto flex items-center gap-1">
+          {currentMachine && (
+            <>
+              <span className="max-w-[280px] truncate text-neutral-500" title={currentMachine.workspaceId}>
+                {currentMachine.workspaceId}
+              </span>
+              <button
+                onClick={handleUnloadMachine}
+                className="rounded px-2 py-0.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                title="Unload machine and pick another diagram"
+              >
+                ⏏ Unload
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Mode toggle */}
+        <div className="flex items-center gap-1">
           {(['select', 'transition', 'pan'] as CanvasMode[]).map((m) => (
             <button
               key={m}

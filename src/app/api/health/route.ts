@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getChronicleSnapshot, getNarrativeBeats } from '@forgewright/lib/chronicle/client';
 import { orphanBeats } from '@forgewright/lib/chronicle/beats';
+import { listEpisodeDiagrams } from '@forgewright/lib/chronicle/diagrams';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,11 @@ export async function GET() {
     // dishonesty as an empty array standing in for a failed fetch.
     const beats = await getNarrativeBeats().catch(() => null);
 
+    // stateMachines counts what /api/machines can actually serve: the episode
+    // diagrams discovered under MIADI_CHRONICLE_ROOT on disk. Same honesty rule
+    // as beats — no count when the root did not answer.
+    const diagrams = await listEpisodeDiagrams().catch(() => null);
+
     return NextResponse.json({
       status: 'healthy',
       service: 'forgewright',
@@ -21,7 +27,7 @@ export async function GET() {
       capabilities: {
         chronicle: 'read-only',
         structuredPlans: 'read-only',
-        stateMachines: 'read-only',
+        stateMachines: diagrams ? 'read-only' : 'unavailable',
         narrativeBeats: beats ? 'read-only' : 'unavailable',
         mcpHttp: 'deferred',
       },
@@ -31,7 +37,7 @@ export async function GET() {
       counts: {
         episodes: snapshot.episodes.length,
         structuredPlans: snapshot.structuredPlans.length,
-        stateMachines: snapshot.stateMachines.length,
+        ...(diagrams ? { stateMachines: diagrams.length } : {}),
         ...(beats
           ? {
               narrativeBeats: beats.count,
