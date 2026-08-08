@@ -29,6 +29,7 @@ export async function GET() {
         structuredPlans: 'read-only',
         stateMachines: diagrams ? 'read-only' : 'unavailable',
         narrativeBeats: beats ? 'read-only' : 'unavailable',
+        recordings: 'read-only',
         mcpHttp: 'deferred',
       },
       dependencies: {
