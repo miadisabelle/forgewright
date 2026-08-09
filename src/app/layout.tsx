@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter, Zilla_Slab } from "next/font/google";
+// The design surface's own stylesheet, imported before ours so the forge
+// palette in globals.css is the one that wins.
+import "@miadi/stateloom-canvas/styles.css";
 import "@forgewright/styles/globals.css";
 
 const zillaSlab = Zilla_Slab({

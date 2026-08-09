@@ -155,6 +155,65 @@ body {
   }
 }
 
+/* ═══ The design surface — stateloom's canvas, forged ════════════════════════
+   `@miadi/stateloom-canvas` paints every colour from a `--slc-*` variable and
+   none from an SVG attribute, which is the whole reason the same board can sit
+   on slate in the stateloom designer and on warm coal here. Redeclaring them
+   on the pane is the entire re-skin: nothing is overridden with `!important`,
+   nothing is fought.
+
+   Ember stays reserved for liveness — the running state wears it, and only the
+   running state. Selection speaks in west-blue so a chosen box and a live box
+   are never the same signal. */
+
+.slc-pane {
+  --slc-surface: var(--fw-ground);
+  --slc-node-fill: var(--fw-iron);
+  --slc-node-stroke: var(--fw-border-strong);
+  --slc-composite-fill: #1A1613;
+  --slc-final-fill: var(--fw-iron-2);
+
+  --slc-accent: var(--forge-west);
+  --slc-accent-fill: var(--forge-west-tint);
+  --slc-accent-ink: var(--forge-west-ink);
+  --slc-danger: var(--forge-south);
+  --slc-draw-source: var(--forge-east);
+  --slc-active: var(--fw-ember);
+
+  --slc-edge: #7A6F66;
+  --slc-chip-fill: var(--fw-iron-2);
+  --slc-chip-stroke: var(--fw-border);
+
+  --slc-label: var(--fw-bone);
+  --slc-muted: var(--fw-ash);
+  --slc-faint: #8F867E;
+  --slc-entry: var(--forge-east-ink);
+  --slc-exit: var(--fw-ember-cooling-ink);
+  --slc-composite: var(--forge-north-ink);
+
+  --slc-panel-bg: rgb(30 26 23 / 0.94);
+  --slc-panel-border: var(--fw-border);
+  --slc-panel-hover: var(--fw-iron-2);
+}
+
+/* The active-state pulse is ember, not the package's green — liveness has one
+   colour in this application and the board is not exempt from it. */
+.slc-pane .slc-node--active {
+  animation: fw-node-ember 1.6s ease-in-out infinite;
+}
+
+@keyframes fw-node-ember {
+  0%, 100% { filter: drop-shadow(0 0 1px rgb(255 109 59 / 0.55)); }
+  50%      { filter: drop-shadow(0 0 7px rgb(255 109 59 / 0.95)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slc-pane .slc-node--active {
+    animation: none;
+    filter: drop-shadow(0 0 4px rgb(255 109 59 / 0.85));
+  }
+}
+
 /* ═══ Motion guard — all animation yields to reduced motion ══════════════════ */
 
 @media (prefers-reduced-motion: reduce) {

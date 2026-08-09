@@ -4,15 +4,16 @@
 // Side panel showing details of a selected state: name, type, actions, transitions.
 // See rispecs/05-visual-designer.spec.md — State Machine View interactions.
 
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import type { StateDef, ActionDef } from '@forgewright/lib/types';
-import { useDesignerStore } from '@forgewright/stores';
 import { classifyState } from './smdf-to-canvas';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface StatePanelProps {
   state: StateDef;
+  /** Drill into this state's children. Absent for a state that has none. */
+  onNavigateInto?: (name: string) => void;
 }
 
 // ─── Type Badge Colors ───────────────────────────────────────────────────────
@@ -27,30 +28,13 @@ const TYPE_BADGES: Record<string, { label: string; color: string }> = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function StatePanel({ state }: StatePanelProps) {
-  const updateNode = useDesignerStore((s) => s.updateNode);
-  const navigateInto = useDesignerStore((s) => s.navigateInto);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editName, setEditName] = useState(state.name);
-
+// Read-only, because the diagram is: episode diagrams are read from the
+// chronicle on disk and never written back, so the rename this panel used to
+// offer wrote into a store nothing rendered.
+export default function StatePanel({ state, onNavigateInto }: StatePanelProps) {
   const stateType = classifyState(state);
   const badge = TYPE_BADGES[stateType] ?? TYPE_BADGES.atomic;
   const hasChildren = stateType === 'composite' || stateType === 'parallel';
-
-  const handleSaveName = useCallback(() => {
-    if (editName.trim() && editName.trim() !== state.name) {
-      updateNode(state.name, { name: editName.trim() });
-    }
-    setIsEditingName(false);
-  }, [editName, state.name, updateNode]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSaveName();
-    if (e.key === 'Escape') {
-      setEditName(state.name);
-      setIsEditingName(false);
-    }
-  }, [handleSaveName, state.name]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -60,9 +44,9 @@ export default function StatePanel({ state }: StatePanelProps) {
           <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${badge.color}`}>
             {badge.label}
           </span>
-          {hasChildren && (
+          {hasChildren && onNavigateInto && (
             <button
-              onClick={() => navigateInto(state.name)}
+              onClick={() => onNavigateInto(state.name)}
               className="text-[10px] text-blue-400 hover:text-blue-300"
               title="Drill into children"
             >
@@ -71,30 +55,7 @@ export default function StatePanel({ state }: StatePanelProps) {
           )}
         </div>
 
-        {isEditingName ? (
-          <input
-            autoFocus
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={handleSaveName}
-            onKeyDown={handleKeyDown}
-            className="w-full rounded bg-neutral-800 px-2 py-1 text-sm text-neutral-100 outline-none ring-1 ring-blue-500"
-          />
-        ) : (
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-neutral-100">{state.name}</h3>
-            <button
-              onClick={() => {
-                setEditName(state.name);
-                setIsEditingName(true);
-              }}
-              className="text-[10px] text-neutral-500 hover:text-neutral-300"
-              title="Edit name"
-            >
-              ✎
-            </button>
-          </div>
-        )}
+        <h3 className="text-body font-semibold text-neutral-100">{state.name}</h3>
 
         {state.description && (
           <p className="mt-1 text-xs text-neutral-400">{state.description}</p>
