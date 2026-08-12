@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import packageInfo from '../../../../package.json';
 import { getChronicleSnapshot, getNarrativeBeats } from '@forgewright/lib/chronicle/client';
 import { orphanBeats } from '@forgewright/lib/chronicle/beats';
 import { listEpisodeDiagrams } from '@forgewright/lib/chronicle/diagrams';
@@ -23,7 +24,7 @@ export async function GET() {
     return NextResponse.json({
       status: 'healthy',
       service: 'forgewright',
-      version: '0.1.0',
+      version: packageInfo.version,
       capabilities: {
         chronicle: 'read-only',
         structuredPlans: 'read-only',
@@ -53,7 +54,7 @@ export async function GET() {
       {
         status: 'unhealthy',
         service: 'forgewright',
-        version: '0.1.0',
+        version: packageInfo.version,
         error: error instanceof Error ? error.message : 'Medicine Wheel unavailable',
       },
       { status: 503 },

@@ -63,7 +63,7 @@ export function RecordingsMetric({ tally }: { tally: RecordingTally }) {
 
   return (
     <Metric
-      label="Recordings"
+      label="Captures"
       value={value}
       caption={
         tally.status === 'ready' && tally.erroredPathCount > 0 ? (
@@ -87,23 +87,35 @@ export function EpisodeRecordingsSection({
   section: SectionProjection<EpisodeRecordingsPayload>;
   onRetry: () => void;
 }) {
-  if (section.status === 'loading') return <SectionLoading label="Recordings" />;
+  if (section.status === 'loading') return <SectionLoading label="Captures" />;
   if (section.status === 'error') {
     return (
       <SectionError
-        label="Recordings"
+        label="Captures"
         message={section.error ?? 'upstream unavailable'}
         onRetry={onRetry}
       />
     );
   }
-  // count 0 renders nothing — silence here means "no recordings", never "broken".
-  if (section.status === 'empty' || !section.data) return null;
+  // count 0 renders an honest empty line — invisible silence reads as "not
+  // deployed", never as "no captures yet" (ruled 2026-08-12, ep320).
+  if (section.status === 'empty' || !section.data) {
+    return (
+      <div className="ml-6 space-y-1.5 border-l border-neutral-800 pl-4">
+        <p className="text-[11px] uppercase tracking-wide text-neutral-600">
+          Captures · <span className="font-mono tabular-nums">0</span>
+          <span className="ml-2 normal-case tracking-normal text-neutral-700">
+            none captured yet
+          </span>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="ml-6 space-y-1.5 border-l border-neutral-800 pl-4">
       <p className="text-[11px] uppercase tracking-wide text-neutral-500">
-        Recordings · <span className="font-mono tabular-nums">{section.data.count}</span>
+        Captures · <span className="font-mono tabular-nums">{section.data.count}</span>
       </p>
       {section.data.recordings.map((recording) => (
         <RecordingCard key={recording.filename} episodePath={episodePath} recording={recording} />
