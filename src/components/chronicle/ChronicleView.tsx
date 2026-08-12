@@ -15,6 +15,9 @@ import {
   type PlanPerspectives,
 } from '@forgewright/lib/chronicle/client';
 import type { ChronicleBeats } from '@forgewright/lib/chronicle/client';
+// Type-only: recordings.ts reads node:fs, which must never enter this client
+// component's bundle. The payload type is erased at compile time.
+import type { EpisodeRecordingsPayload } from '@forgewright/lib/chronicle/recordings';
 import {
   collectDistinctEpisodePaths,
   errorResource,
@@ -23,8 +26,10 @@ import {
   projectBeatSection,
   projectInquirySection,
   projectPerspectiveSection,
+  projectRecordingSection,
   projectUnclaimedBeatSection,
   readyResource,
+  tallyRecordingResources,
   withResource,
   type SectionProjection,
   type SharedResource,
@@ -44,6 +49,7 @@ import {
   type MwHeat,
 } from '@forgewright/lib/useMwHealth';
 import Markdown from './Markdown';
+import { EpisodeRecordingsSection, RecordingsMetric } from './EpisodeRecordings';
 import {
   EpisodeBeatsSection,
   NarrativeBeatMetric,
@@ -125,9 +131,10 @@ function LoadingState() {
 
 // ─── Shared in-view fetch cache (miadisabelle/forgewright#7) ─────────────────
 // One unfiltered inquiry request feeds the metric tile AND every episode
-// section; one perspectives request per DISTINCT episode path feeds both the
-// episode-level and plan-level sections. reloadKey invalidates every shared
-// resource; a section's Retry refetches only the shared resource it reads.
+// section; one request per DISTINCT episode path feeds the perspectives (both
+// the episode-level and plan-level sections) and the recordings (section +
+// tallied metric). reloadKey invalidates every shared resource; a section's
+// Retry refetches only the shared resource it reads.
 
 interface SharedInquiry {
   resource: SharedResource<EpisodeInquiry>;
@@ -218,47 +225,51 @@ function useSharedBeats(reloadKey: number): SharedBeats {
   return { resource, retry };
 }
 
-interface SharedPerspectives {
-  byPath: ReadonlyMap<string, SharedResource<PlanPerspectives>>;
+interface PerPathResources<T> {
+  byPath: ReadonlyMap<string, SharedResource<T>>;
   retryPath: (episodePath: string) => void;
 }
 
-interface PerspectiveGeneration {
+interface PerPathGeneration {
   generation: number;
   requested: Set<string>;
   controller: AbortController;
 }
 
-function useSharedPerspectives(
+/**
+ * One fetch per DISTINCT episode path, cached for the view's generation.
+ * Perspectives introduced this lifecycle (the wheel requires a filter there);
+ * recordings share it because their proxy is intrinsically per-episode — it
+ * lists ONE vessel's folder on disk. The request URL is the only variation.
+ */
+function usePerPathResources<T>(
   episodePaths: readonly string[],
   reloadKey: number,
-): SharedPerspectives {
-  const [byPath, setByPath] = useState<ReadonlyMap<string, SharedResource<PlanPerspectives>>>(
+  requestPathFor: (episodePath: string) => string,
+): PerPathResources<T> {
+  const [byPath, setByPath] = useState<ReadonlyMap<string, SharedResource<T>>>(
     () => new Map(),
   );
-  const trackerRef = useRef<PerspectiveGeneration | null>(null);
+  const trackerRef = useRef<PerPathGeneration | null>(null);
 
   const runFetch = useCallback((episodePath: string) => {
     const tracker = trackerRef.current;
     if (!tracker) return;
     const { generation, controller } = tracker;
 
-    const apply = (entry: SharedResource<PlanPerspectives>) => {
+    const apply = (entry: SharedResource<T>) => {
       if (controller.signal.aborted || trackerRef.current?.generation !== generation) return;
       setByPath((previous) => withResource(previous, episodePath, entry));
     };
 
     async function load() {
       try {
-        const response = await fetch(
-          `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath)}`,
-          {
-            cache: 'no-store',
-            headers: { accept: 'application/json' },
-            signal: controller.signal,
-          },
-        );
-        const body = (await response.json()) as { data: PlanPerspectives | null; error?: string };
+        const response = await fetch(requestPathFor(episodePath), {
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as { data: T | null; error?: string };
         if (!response.ok || body.data == null) {
           throw new Error(body.error ?? `HTTP ${response.status}`);
         }
@@ -272,7 +283,8 @@ function useSharedPerspectives(
     }
 
     void load();
-  }, []);
+    // Callers below pass module-level constants, so this stays stable.
+  }, [requestPathFor]);
 
   useEffect(() => {
     const tracker = trackerRef.current;
@@ -292,7 +304,7 @@ function useSharedPerspectives(
 
     for (const path of missing) current.requested.add(path);
     setByPath((previous) => {
-      let next: ReadonlyMap<string, SharedResource<PlanPerspectives>> = previous;
+      let next: ReadonlyMap<string, SharedResource<T>> = previous;
       for (const path of missing) next = withResource(next, path, loadingResource());
       return next;
     });
@@ -323,6 +335,33 @@ function useSharedPerspectives(
   return { byPath, retryPath };
 }
 
+type SharedPerspectives = PerPathResources<PlanPerspectives>;
+type SharedRecordings = PerPathResources<EpisodeRecordingsPayload>;
+
+const perspectivesRequestPath = (episodePath: string) =>
+  `/api/chronicle/perspectives?episode_path=${encodeURIComponent(episodePath)}`;
+
+const recordingsRequestPath = (episodePath: string) =>
+  `/api/chronicle/recordings?episode=${encodeURIComponent(episodePath)}`;
+
+function useSharedPerspectives(
+  episodePaths: readonly string[],
+  reloadKey: number,
+): SharedPerspectives {
+  return usePerPathResources<PlanPerspectives>(episodePaths, reloadKey, perspectivesRequestPath);
+}
+
+function useSharedRecordings(
+  episodePaths: readonly string[],
+  reloadKey: number,
+): SharedRecordings {
+  return usePerPathResources<EpisodeRecordingsPayload>(
+    episodePaths,
+    reloadKey,
+    recordingsRequestPath,
+  );
+}
+
 export default function ChronicleView() {
   const [snapshot, setSnapshot] = useState<ChronicleSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -341,6 +380,11 @@ export default function ChronicleView() {
     [snapshot],
   );
   const sharedPerspectives = useSharedPerspectives(episodePaths, reloadKey);
+  const sharedRecordings = useSharedRecordings(episodePaths, reloadKey);
+  const recordingTally = useMemo(
+    () => tallyRecordingResources(sharedRecordings.byPath, episodePaths),
+    [sharedRecordings.byPath, episodePaths],
+  );
 
   // ─── Where the reader is standing (spec 11.2) ──────────────────────────────
   // The URL is the position. It is canonicalized against what the wheel served,
@@ -490,11 +534,12 @@ export default function ChronicleView() {
               </p>
             ) : null}
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
               <InquiryWeaveMetric resource={sharedInquiry.resource} onRetry={sharedInquiry.retry} />
               <NarrativeBeatMetric resource={sharedBeats.resource} onRetry={sharedBeats.retry} />
+              <RecordingsMetric tally={recordingTally} />
               <Metric label="State machines" value={snapshot.stateMachines.length} />
             </div>
 
@@ -544,6 +589,13 @@ export default function ChronicleView() {
                       <EpisodePerspectiveSection
                         episodePath={getEpisodeInquiryPath(episode)}
                         perspectives={sharedPerspectives}
+                      />
+                      <EpisodeRecordingsSection
+                        episodePath={getEpisodeInquiryPath(episode)}
+                        section={projectRecordingSection(
+                          sharedRecordings.byPath.get(getEpisodeInquiryPath(episode)),
+                        )}
+                        onRetry={() => sharedRecordings.retryPath(getEpisodeInquiryPath(episode))}
                       />
                     </div>
                   ))}

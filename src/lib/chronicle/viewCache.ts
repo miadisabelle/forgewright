@@ -16,6 +16,9 @@ import {
   type EpisodeInquiry,
   type PlanPerspectives,
 } from './client';
+// Type-only: recordings.ts reads node:fs, which must never enter this
+// client-bundled module. The types are erased at compile time.
+import type { EpisodeRecordingsPayload } from './recordings';
 
 export type SharedResourceStatus = 'loading' | 'error' | 'ready';
 
@@ -186,6 +189,59 @@ export function projectUnclaimedBeatSection(
   }
   const outside = filterBeatsOutsideEpisodes(resource.data, episodePaths);
   return { status: isSilent(outside) ? 'empty' : 'ready', data: outside, error: null };
+}
+
+// ─── Episode recordings share the perspectives' per-path lifecycle ───────────
+// The recordings proxy is intrinsically per-episode (it lists ONE vessel's
+// folder on disk), so the per-DISTINCT-path cache the perspectives already use
+// is the batch unit here too. Projection and tally are pure so the section
+// states and the metric arithmetic are testable without React.
+
+/** Per-episode recordings lifecycle from the shared per-path cache. */
+export function projectRecordingSection(
+  resource: SharedResource<EpisodeRecordingsPayload> | undefined,
+): SectionProjection<EpisodeRecordingsPayload> {
+  // A path the effect has not requested yet is loading, never silently empty.
+  if (!resource || resource.status === 'loading') {
+    return { status: 'loading', data: null, error: null };
+  }
+  if (resource.status === 'error' || !resource.data) {
+    return { status: 'error', data: null, error: resource.error ?? 'upstream unavailable' };
+  }
+  return {
+    status: resource.data.count === 0 ? 'empty' : 'ready',
+    data: resource.data,
+    error: null,
+  };
+}
+
+export interface RecordingTally {
+  status: 'loading' | 'ready';
+  /** Recordings counted across every episode path that answered. */
+  total: number;
+  /** Paths whose fetch failed — the per-episode sections carry their retries. */
+  erroredPathCount: number;
+}
+
+/** Aggregate the per-path recording resources into the one metric-tile answer. */
+export function tallyRecordingResources(
+  byPath: ReadonlyMap<string, SharedResource<EpisodeRecordingsPayload>>,
+  episodePaths: readonly string[],
+): RecordingTally {
+  let total = 0;
+  let erroredPathCount = 0;
+  for (const path of episodePaths) {
+    const resource = byPath.get(path);
+    if (!resource || resource.status === 'loading') {
+      return { status: 'loading', total: 0, erroredPathCount: 0 };
+    }
+    if (resource.status === 'error' || !resource.data) {
+      erroredPathCount += 1;
+      continue;
+    }
+    total += resource.data.count;
+  }
+  return { status: 'ready', total, erroredPathCount };
 }
 
 /** Per-section perspectives lifecycle from the shared per-path cache. */
