@@ -56,6 +56,7 @@ import {
   UnassociatedBeatsSection,
   type BeatNavigation,
 } from './NarrativeBeats';
+import { AttentionBoard, EpisodeAttentionLine } from './AttentionSection';
 import { formatTimestamp, Metric, SectionError, SectionLoading } from './sections';
 
 interface ChronicleApiResponse {
@@ -534,7 +535,12 @@ export default function ChronicleView() {
               </p>
             ) : null}
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+              <Metric
+                label="Needs attention"
+                value={snapshot.attention.filter((item) => item.itemState === 'open').length}
+                title="Open attention items across the chronicle (kind: attention on the wheel)"
+              />
               <Metric label="Episodes" value={snapshot.episodes.length} />
               <Metric label="Structured plans" value={snapshot.structuredPlans.length} />
               <InquiryWeaveMetric resource={sharedInquiry.resource} onRetry={sharedInquiry.retry} />
@@ -542,6 +548,11 @@ export default function ChronicleView() {
               <RecordingsMetric tally={recordingTally} />
               <Metric label="State machines" value={snapshot.stateMachines.length} />
             </div>
+
+            <AttentionBoard
+              items={snapshot.attention.filter((item) => item.itemState === 'open')}
+              episodes={snapshot.episodes}
+            />
 
             {snapshot.root ? (
               // North holds the archive — the root wears the north direction by meaning.
@@ -573,6 +584,10 @@ export default function ChronicleView() {
                   {snapshot.episodes.map((episode) => (
                     <div key={episode.id} className="space-y-2">
                       <ReferenceCard reference={episode} />
+                      <EpisodeAttentionLine
+                        episode={episode}
+                        items={snapshot.attention.filter((item) => item.itemState === 'open')}
+                      />
                       <EpisodeInquirySection
                         episodePath={getEpisodeInquiryPath(episode)}
                         inquiry={sharedInquiry}

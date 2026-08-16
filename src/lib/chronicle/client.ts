@@ -6,6 +6,7 @@ const ARTIFACT_KINDS = [
   'chronicle_episode',
   'structured_plan',
   'state_machine',
+  'attention',
 ] as const;
 
 const DIRECTIONS = ['east', 'south', 'west', 'north'] as const;
@@ -57,6 +58,12 @@ export interface ChronicleArtifactReference {
   sessionId?: string;
   /** SHA-256 of the plan file at registration (metadata.source_sha256). */
   planSha256?: string;
+  /** Attention items only (kind 'attention') — what needs a human (ep332). */
+  itemId?: string;
+  itemState?: 'open' | 'answered';
+  unlocks?: string;
+  asked?: string;
+  answer?: string;
 }
 
 export interface ChronicleSnapshot {
@@ -71,6 +78,8 @@ export interface ChronicleSnapshot {
   episodes: ChronicleArtifactReference[];
   structuredPlans: ChronicleArtifactReference[];
   stateMachines: ChronicleArtifactReference[];
+  /** What needs a human, chronicle-wide (kind 'attention', ep332 loop). */
+  attention: ChronicleArtifactReference[];
   ignoredNodeCount: number;
 }
 
@@ -200,6 +209,19 @@ function normalizeReference(node: MedicineWheelNode): ChronicleArtifactReference
   if (sessionId) reference.sessionId = sessionId;
   if (planSha256) reference.planSha256 = planSha256;
 
+  if (reference.kind === 'attention') {
+    const itemId = optionalString(node.metadata.item_id);
+    const itemState = optionalString(node.metadata.state);
+    const unlocks = optionalString(node.metadata.unlocks);
+    const asked = optionalString(node.metadata.asked);
+    const answer = optionalString(node.metadata.answer);
+    if (itemId) reference.itemId = itemId;
+    if (itemState === 'open' || itemState === 'answered') reference.itemState = itemState;
+    if (unlocks) reference.unlocks = unlocks;
+    if (asked) reference.asked = asked;
+    if (answer) reference.answer = answer;
+  }
+
   return reference;
 }
 
@@ -276,6 +298,9 @@ export async function getChronicleSnapshot(
       .sort(byNewestThenName),
     stateMachines: references
       .filter((reference) => reference.kind === 'state_machine')
+      .sort(byNewestThenName),
+    attention: references
+      .filter((reference) => reference.kind === 'attention')
       .sort(byNewestThenName),
     ignoredNodeCount: nodesResponse.nodes.length - references.length,
   };
@@ -576,9 +601,10 @@ export async function getPlanPerspectives(
 // Medicine Wheel is the system of record; ForgeWright reads, groups, and draws.
 // It ships NO write path here — no POST, PATCH, or DELETE against /api/narrative.
 //
-// The wheel serves no filters yet (spec 11 Exportation §3), so the fetch is
-// always unfiltered and the query is applied client-side. That keeps ONE probe
-// feeding the metric tile, every episode section, and every arc.
+// STALE NOTE, corrected 2026-08-15: the wheel DOES serve ?kind= and ?parent_id=
+// on /api/nodes since 0.5.9 (ANDed, server-side). The beats/cycles routes below
+// remain unfiltered; this file still fetches /api/nodes unfiltered on purpose —
+// ONE probe feeds the metric tile, every episode section, and every arc.
 
 export type ChronicleDirection = Direction;
 

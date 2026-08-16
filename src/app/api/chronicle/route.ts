@@ -14,6 +14,7 @@ export async function GET() {
         episodeCount: snapshot.episodes.length,
         structuredPlanCount: snapshot.structuredPlans.length,
         stateMachineCount: snapshot.stateMachines.length,
+        attentionOpenCount: snapshot.attention.filter((item) => item.itemState === 'open').length,
       },
     });
   } catch (error) {
